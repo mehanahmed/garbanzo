@@ -1,3 +1,4 @@
+import { isInteractionSoundTrackPath } from "./interactionSoundTrack";
 import { getLocalFilePathFromResource } from "./mediaResource";
 
 function normalizeSourceAudioFallbackPath(resourceOrPath: string): string | null {
@@ -45,4 +46,23 @@ export function resolveSourceAudioFallbackPaths(
 					.map(({ audioPath }) => audioPath)
 			: normalizedPaths.map(({ audioPath }) => audioPath),
 	};
+}
+
+/**
+ * The audio sources to use when click/typing sounds are turned off: the same
+ * list without the sound track. If the video was only listed to sit beside the
+ * sound track, the result is empty, exactly as for a recording without sounds.
+ */
+export function removeInteractionSoundTrack(
+	videoResource: string | null | undefined,
+	sourceAudioFallbackPaths: string[],
+): string[] {
+	const withoutSounds = sourceAudioFallbackPaths.filter(
+		(audioPath) => !isInteractionSoundTrackPath(audioPath),
+	);
+	if (withoutSounds.length === sourceAudioFallbackPaths.length) {
+		return sourceAudioFallbackPaths;
+	}
+	const { externalAudioPaths } = resolveSourceAudioFallbackPaths(videoResource, withoutSounds);
+	return externalAudioPaths.length === 0 ? [] : withoutSounds;
 }

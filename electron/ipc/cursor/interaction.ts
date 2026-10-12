@@ -13,6 +13,7 @@ import {
 } from "../state";
 import type {
 	CursorInteractionType,
+	HookKeyboardEvent,
 	HookMouseEvent,
 	UiohookLike,
 	UiohookModuleNamespace,
@@ -233,6 +234,59 @@ export function recordCursorMouseUp() {
 	pushCursorSample(point.cx, point.cy, getCursorCaptureElapsedMs(), "mouseup");
 }
 
+// Modifier keys on their own make no typing sound, so shortcuts like Ctrl+S
+// sound like one key press, not two.
+const MODIFIER_KEYCODES = new Set([29, 3613, 56, 3640, 42, 54, 3675, 3676, 58]);
+// Ignore key-repeat bursts closer than this (some layouts repeat without keyup).
+const MIN_KEYPRESS_GAP_MS = 12;
+const heldKeycodes = new Set<number>();
+let lastKeypressTimeMs = Number.NEGATIVE_INFINITY;
+
+export function resetKeyboardInteractionState() {
+	heldKeycodes.clear();
+	lastKeypressTimeMs = Number.NEGATIVE_INFINITY;
+}
+
+/**
+ * Note that a key went down, for typing sounds. Only the time is kept: which
+ * key was pressed is never recorded or saved.
+ */
+export function recordKeyDown(keycode: number | undefined) {
+	if (!isCursorCaptureActive || isCursorCapturePaused()) {
+		return;
+	}
+
+	const code = typeof keycode === "number" && Number.isFinite(keycode) ? keycode : -1;
+	if (MODIFIER_KEYCODES.has(code)) {
+		return;
+	}
+	// Holding a key fires repeated keydowns; only the first one makes a sound.
+	if (code >= 0 && heldKeycodes.has(code)) {
+		return;
+	}
+	if (code >= 0) {
+		heldKeycodes.add(code);
+	}
+
+	const timeMs = getCursorCaptureElapsedMs();
+	if (timeMs - lastKeypressTimeMs < MIN_KEYPRESS_GAP_MS) {
+		return;
+	}
+	lastKeypressTimeMs = timeMs;
+
+	const point = getNormalizedCursorPoint();
+	if (!point) {
+		return;
+	}
+	pushCursorSample(point.cx, point.cy, timeMs, "keypress");
+}
+
+export function recordKeyUp(keycode: number | undefined) {
+	if (typeof keycode === "number") {
+		heldKeycodes.delete(keycode);
+	}
+}
+
 export async function startInteractionCapture() {
 	if (!isCursorCaptureActive) {
 		return;
@@ -289,8 +343,19 @@ export async function startInteractionCapture() {
 			setLinuxCursorScreenPoint({ x: point.x, y: point.y, updatedAt: Date.now() });
 		};
 
+		const onKeyDown = (event: HookKeyboardEvent) => {
+			recordKeyDown(event?.keycode);
+		};
+
+		const onKeyUp = (event: HookKeyboardEvent) => {
+			recordKeyUp(event?.keycode);
+		};
+
+		resetKeyboardInteractionState();
 		hook.on("mousedown", onMouseDown);
 		hook.on("mouseup", onMouseUp);
+		hook.on("keydown", onKeyDown);
+		hook.on("keyup", onKeyUp);
 		if (process.platform === "linux") {
 			hook.on("mousemove", onMouseMove);
 		}
@@ -300,12 +365,16 @@ export async function startInteractionCapture() {
 				if (typeof hook.off === "function") {
 					hook.off("mousedown", onMouseDown);
 					hook.off("mouseup", onMouseUp);
+					hook.off("keydown", onKeyDown);
+					hook.off("keyup", onKeyUp);
 					if (process.platform === "linux") {
 						hook.off("mousemove", onMouseMove);
 					}
 				} else if (typeof hook.removeListener === "function") {
 					hook.removeListener("mousedown", onMouseDown);
 					hook.removeListener("mouseup", onMouseUp);
+					hook.removeListener("keydown", onKeyDown);
+					hook.removeListener("keyup", onKeyUp);
 					if (process.platform === "linux") {
 						hook.removeListener("mousemove", onMouseMove);
 					}

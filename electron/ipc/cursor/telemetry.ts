@@ -24,6 +24,7 @@ import {
 } from "../state";
 import type { CursorInteractionType, CursorTelemetryPoint, CursorVisualType } from "../types";
 import { getScreen, getTelemetryPathForVideo } from "../utils";
+import { writeInteractionSoundTrack } from "./interactionSounds";
 
 export function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
@@ -60,7 +61,8 @@ export function normalizeCursorTelemetrySamples(rawSamples: unknown): CursorTele
 					point.interactionType === "right-click" ||
 					point.interactionType === "middle-click" ||
 					point.interactionType === "move" ||
-					point.interactionType === "mouseup"
+					point.interactionType === "mouseup" ||
+					point.interactionType === "keypress"
 						? point.interactionType
 						: undefined,
 				cursorType:
@@ -264,15 +266,23 @@ export function sampleCursorPoint() {
 
 export async function persistPendingCursorTelemetry(videoPath: string) {
 	const telemetryPath = getTelemetryPathForVideo(videoPath);
-	if (pendingCursorSamples.length > 0) {
+	const samples = pendingCursorSamples;
+	if (samples.length > 0) {
 		await fs.writeFile(
 			telemetryPath,
 			// Compact JSON: 60 Hz telemetry would otherwise double the file size.
-			JSON.stringify({ version: CURSOR_TELEMETRY_VERSION, samples: pendingCursorSamples }),
+			JSON.stringify({ version: CURSOR_TELEMETRY_VERSION, samples }),
 			"utf-8",
 		);
 	}
 	setPendingCursorSamples([]);
+
+	try {
+		await writeInteractionSoundTrack(videoPath, samples);
+	} catch (error) {
+		// Click/typing sounds are optional; never fail a recording over them.
+		console.warn("[CursorTelemetry] Could not write click/typing sound track:", error);
+	}
 }
 
 export function snapshotCursorTelemetryForPersistence() {

@@ -1,6 +1,6 @@
-import { Plus } from "@/components/ui/icons";
 import type { Span } from "dnd-timeline";
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { Plus } from "@/components/ui/icons";
 import type {
 	SourceAudioTrackMeta,
 	SourceAudioTrackSettings,
@@ -87,6 +87,8 @@ export interface TimelineEditorProps {
 	sourceAudioTrackSettings?: SourceAudioTrackSettings;
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
 	onSourceAudioTracksMetaChange?: (tracks: SourceAudioTrackMeta) => void;
+	/** The click/typing sound track, when the recording has one and it is on. */
+	interactionSoundTrackPath?: string | null;
 }
 
 function extractLocalPathFromMediaServerUrl(input: string | null | undefined): string | null {
@@ -170,6 +172,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			sourceAudioTrackSettings = {},
 			getSourceAudioTrackSettingsForClip,
 			onSourceAudioTracksMetaChange,
+			interactionSoundTrackPath = null,
 		},
 		ref,
 	) {
@@ -287,19 +290,31 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 				resourceVersion: sourceAudioResourceVersion,
 			},
 		);
+		const { peaks: interactionSoundPeaks } = useTimelineAudioPeaks(interactionSoundTrackPath, {
+			resourceVersion: sourceAudioResourceVersion,
+		});
 		const sourceAudioTracks = useMemo(
 			() =>
 				buildTimelineSourceAudioTracks({
 					sourceAudioPeaks,
 					micSidecarPeaks,
 					systemSidecarPeaks,
+					interactionSoundPeaks: interactionSoundTrackPath ? interactionSoundPeaks : null,
 					labels: {
 						system: t("audio.systemLabel", "Source System"),
 						mic: t("audio.micLabel", "Source Mic"),
 						mixed: t("audio.mixedLabel", "Source"),
+						sfx: t("audio.interactionSoundsLabel", "Click & typing sounds"),
 					},
 				}),
-			[micSidecarPeaks, sourceAudioPeaks, systemSidecarPeaks, t],
+			[
+				interactionSoundPeaks,
+				interactionSoundTrackPath,
+				micSidecarPeaks,
+				sourceAudioPeaks,
+				systemSidecarPeaks,
+				t,
+			],
 		);
 
 		const isLoading = useMemo(() => {

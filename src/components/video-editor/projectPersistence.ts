@@ -1,5 +1,5 @@
-import { getLocalMediaServerPath } from "@/lib/localMediaUrl";
 import type { SourceAudioTrackSettings } from "@/components/video-editor/audio/audioTypes";
+import { getLocalMediaServerPath } from "@/lib/localMediaUrl";
 import { DEFAULT_WALLPAPER_PATH } from "@/lib/wallpapers";
 import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/aspectRatioUtils";
 import { closeClipGaps, rippleRegionAnchors, rippleRegions } from "./clipSequence";
@@ -33,6 +33,7 @@ import {
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SWAY,
 	DEFAULT_FIGURE_DATA,
+	DEFAULT_INTERACTION_SOUND_VOLUME,
 	DEFAULT_PADDING,
 	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_WEBCAM_MARGIN,
@@ -103,6 +104,8 @@ export interface ProjectEditorState {
 	cursorClickEffectColor: string;
 	cursorClickEffectScale: number;
 	cursorClickEffectOpacity: number;
+	/** Mouse-click and typing sound volume (0 = off). */
+	interactionSoundVolume: number;
 	cursorClickEffectDurationMs: number;
 	cursorSize: number;
 	cursorSmoothing: number;
@@ -817,6 +820,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 	)
 		? clamp((editor as Partial<ProjectEditorState>).cursorClickEffectOpacity as number, 0, 1)
 		: DEFAULT_CURSOR_CLICK_EFFECT_OPACITY;
+	const normalizedInteractionSoundVolume = isFiniteNumber(
+		(editor as Partial<ProjectEditorState>).interactionSoundVolume,
+	)
+		? clamp((editor as Partial<ProjectEditorState>).interactionSoundVolume as number, 0, 1)
+		: DEFAULT_INTERACTION_SOUND_VOLUME;
 	const normalizedCursorClickEffectDurationMs = isFiniteNumber(
 		(editor as Partial<ProjectEditorState>).cursorClickEffectDurationMs,
 	)
@@ -861,6 +869,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		cursorClickEffectColor: normalizedCursorClickEffectColor,
 		cursorClickEffectScale: normalizedCursorClickEffectScale,
 		cursorClickEffectOpacity: normalizedCursorClickEffectOpacity,
+		interactionSoundVolume: normalizedInteractionSoundVolume,
 		cursorClickEffectDurationMs: normalizedCursorClickEffectDurationMs,
 		cursorSize: normalizedMotionPreset.cursorSize,
 		cursorSmoothing: normalizedMotionPreset.cursorSmoothing,

@@ -97,6 +97,7 @@ export function useTimelineEditingController(input: Input) {
 		duration: input.duration,
 		isPlaying: input.isPlaying,
 		previewVolume: input.previewVolume,
+		interactionSoundVolume: input.appearance.interactionSoundVolume,
 		sourceAudioFallbackRefreshKey: timeline.sourceAudioFallbackRefreshKey,
 		summarizeErrorMessage,
 		onSourceFallbackLoadError: handleSourceFallbackLoadError,

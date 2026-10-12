@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveSourceAudioFallbackPaths } from "./sourceAudioFallback";
+import {
+	removeInteractionSoundTrack,
+	resolveSourceAudioFallbackPaths,
+} from "./sourceAudioFallback";
 
 describe("resolveSourceAudioFallbackPaths", () => {
 	it("treats the video file path as embedded source audio when present in the fallback list", () => {
@@ -60,5 +63,26 @@ describe("resolveSourceAudioFallbackPaths", () => {
 			hasEmbeddedSourceAudio: true,
 			externalAudioPaths: ["c:\\users\\egg\\videos\\recording.mic.wav"],
 		});
+	});
+
+	it("drops the click/typing sound track when sounds are off", () => {
+		expect(
+			removeInteractionSoundTrack("/tmp/recording.mp4", [
+				"/tmp/recording.mp4",
+				"/tmp/recording.sfx.wav",
+			]),
+		).toEqual([]);
+		expect(
+			removeInteractionSoundTrack("/tmp/recording.mp4", ["/tmp/recording.sfx.wav"]),
+		).toEqual([]);
+		expect(
+			removeInteractionSoundTrack("/tmp/recording.mp4", [
+				"/tmp/recording.mp4",
+				"/tmp/recording.mic.wav",
+				"/tmp/recording.sfx.wav",
+			]),
+		).toEqual(["/tmp/recording.mp4", "/tmp/recording.mic.wav"]);
+		const untouched = ["/tmp/recording.mp4", "/tmp/recording.mic.wav"];
+		expect(removeInteractionSoundTrack("/tmp/recording.mp4", untouched)).toBe(untouched);
 	});
 });

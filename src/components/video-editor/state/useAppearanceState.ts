@@ -99,6 +99,9 @@ export function useAppearanceState(preferences: EditorPreferences) {
 	const [cursorClickEffectOpacity, setCursorClickEffectOpacity] = useState(
 		preferences.cursorClickEffectOpacity,
 	);
+	const [interactionSoundVolume, setInteractionSoundVolume] = useState(
+		preferences.interactionSoundVolume,
+	);
 	const [cursorClickEffectDurationMs, setCursorClickEffectDurationMs] = useState(
 		preferences.cursorClickEffectDurationMs,
 	);
@@ -182,6 +185,8 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		setCursorClickEffectScale,
 		cursorClickEffectOpacity,
 		setCursorClickEffectOpacity,
+		interactionSoundVolume,
+		setInteractionSoundVolume,
 		cursorClickEffectDurationMs,
 		setCursorClickEffectDurationMs,
 		cursorClickBounce,

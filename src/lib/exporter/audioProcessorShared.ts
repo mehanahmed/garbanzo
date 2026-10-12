@@ -5,7 +5,7 @@ import type {
 	SourceAudioTrackSettings,
 	TrimRegion,
 } from "@/components/video-editor/types";
-import type { SourceTrackId } from "@/lib/exporter/audioRoutingEngine";
+import { isInteractionSoundTrackPath, type SourceTrackId } from "@/lib/exporter/audioRoutingEngine";
 
 export const AUDIO_BITRATE = 128_000;
 export const DECODE_BACKPRESSURE_LIMIT = 20;
@@ -56,7 +56,7 @@ export function softLimitOfflineMixPeaksInPlace(buffer: AudioBuffer): boolean {
 
 export function resolveSourceTrackGain(
 	sourceAudioTrackSettings: SourceAudioTrackSettings | undefined,
-	trackId: "mic" | "system" | "mixed",
+	trackId: SourceTrackId,
 ) {
 	const settings = sourceAudioTrackSettings?.[trackId];
 	if (!settings) {
@@ -68,6 +68,10 @@ export function resolveSourceTrackGain(
 
 export function getSourceTrackIdFromPath(audioPath: string): SourceTrackId {
 	const normalized = audioPath.toLowerCase();
+	// Click/typing sounds (`<video>.sfx.wav`) are their own track.
+	if (isInteractionSoundTrackPath(normalized)) {
+		return "sfx";
+	}
 	// Check for common patterns like .mic., -mic., mic.mp4, etc.
 	if (
 		normalized.includes(".mic.") ||

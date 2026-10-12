@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { isInteractionSoundTrackPath } from "@/lib/exporter/audioRoutingEngine";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import { retimeCaptionFragment } from "../captionTimeline";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
@@ -149,6 +150,9 @@ export function EditorTimelinePanel(props: Props) {
 				getSourceAudioTrackSettingsForClip={audio.getSourceAudioTrackSettingsForClip}
 				onSourceAudioAvailabilityChange={timeline.setHasClipSourceAudio}
 				onSourceAudioTracksMetaChange={audio.onSourceAudioTracksMetaChange}
+				interactionSoundTrackPath={
+					audio.sourceAudioFallbackPaths.find(isInteractionSoundTrackPath) ?? null
+				}
 			/>
 		</div>
 	);

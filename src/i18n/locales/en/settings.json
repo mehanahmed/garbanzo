@@ -131,6 +131,11 @@
 				"description": "A pair of soft rings that spread outward with a cleaner pulse."
 			}
 		},
+		"interactionSounds": {
+			"title": "Click & typing sounds",
+			"volume": "Sound Volume",
+			"hint": "Adds a sound to every mouse click and key press in new recordings. Which keys you press is never saved."
+		},
 		"cursorMotionBlur": "Cursor Motion Blur",
 		"cursorClickBounce": "Cursor Click Bounce",
 		"cursorClickBounceDuration": "Bounce Speed",
@@ -261,6 +266,7 @@
 		"systemLabel": "Source System",
 		"micLabel": "Source Mic",
 		"mixedLabel": "Source",
-		"deleteRegion": "Delete Audio"
+		"deleteRegion": "Delete Audio",
+		"interactionSoundsLabel": "Click & typing sounds"
 	}
 }

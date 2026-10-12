@@ -1,5 +1,5 @@
-import { normalizeExportPreferences, type ExportPreferences } from "./exportPreferences";
 import { loadAppSetting, saveAppSetting } from "../../lib/appSettings";
+import { type ExportPreferences, normalizeExportPreferences } from "./exportPreferences";
 import {
 	getDefaultBorderRadiusPercent,
 	legacyBorderRadiusPixelsToPercent,
@@ -40,6 +40,7 @@ type PersistedEditorControls = Pick<
 	| "cursorClickEffectColor"
 	| "cursorClickEffectScale"
 	| "cursorClickEffectOpacity"
+	| "interactionSoundVolume"
 	| "cursorClickEffectDurationMs"
 	| "cursorClickBounce"
 	| "cursorClickBounceDuration"
@@ -117,6 +118,7 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	cursorClickEffectColor: DEFAULT_EDITOR_CONTROLS.cursorClickEffectColor,
 	cursorClickEffectScale: DEFAULT_EDITOR_CONTROLS.cursorClickEffectScale,
 	cursorClickEffectOpacity: DEFAULT_EDITOR_CONTROLS.cursorClickEffectOpacity,
+	interactionSoundVolume: DEFAULT_EDITOR_CONTROLS.interactionSoundVolume,
 	cursorClickEffectDurationMs: DEFAULT_EDITOR_CONTROLS.cursorClickEffectDurationMs,
 	cursorClickBounce: DEFAULT_EDITOR_CONTROLS.cursorClickBounce,
 	cursorClickBounceDuration: DEFAULT_EDITOR_CONTROLS.cursorClickBounceDuration,
@@ -312,6 +314,8 @@ function normalizeEditorControls(
 			sanitizedRaw.cursorClickEffectScale ?? fallback.cursorClickEffectScale,
 		cursorClickEffectOpacity:
 			sanitizedRaw.cursorClickEffectOpacity ?? fallback.cursorClickEffectOpacity,
+		interactionSoundVolume:
+			sanitizedRaw.interactionSoundVolume ?? fallback.interactionSoundVolume,
 		cursorClickEffectDurationMs:
 			sanitizedRaw.cursorClickEffectDurationMs ?? fallback.cursorClickEffectDurationMs,
 		cursorClickBounce: sanitizedRaw.cursorClickBounce ?? fallback.cursorClickBounce,
@@ -357,6 +361,7 @@ function normalizeEditorControls(
 		cursorClickEffectColor: normalized.cursorClickEffectColor,
 		cursorClickEffectScale: normalized.cursorClickEffectScale,
 		cursorClickEffectOpacity: normalized.cursorClickEffectOpacity,
+		interactionSoundVolume: normalized.interactionSoundVolume,
 		cursorClickEffectDurationMs: normalized.cursorClickEffectDurationMs,
 		cursorClickBounce: normalized.cursorClickBounce,
 		cursorClickBounceDuration: normalized.cursorClickBounceDuration,

@@ -1,13 +1,11 @@
-import { SettingsSections, SettingsCategory } from "./SettingsSections";
-import { Card, RadioGroup, Radio, Label, Description } from "@heroui/react";
-import { ProgressBar } from "@heroui/react";
-import { ColorControl, ColorPalette } from "@/components/ui/color-picker";
-import { Palette, Trash as Trash2, UploadSimple as Upload } from "@/components/ui/icons";
+import { Card, Description, Label, ProgressBar, Radio, RadioGroup } from "@heroui/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "@/components/ui/toast";
 import minimalCursorUrl from "@/assets/cursors/custom/minimal-cursor.svg";
 import { Button } from "@/components/ui/button";
+import { ChoiceGroup, ChoiceItem } from "@/components/ui/choice-group";
+import { ColorControl, ColorPalette } from "@/components/ui/color-picker";
+import { Palette, Trash as Trash2, UploadSimple as Upload } from "@/components/ui/icons";
 import {
 	Select,
 	SelectContent,
@@ -16,7 +14,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ChoiceGroup, ChoiceItem } from "@/components/ui/choice-group";
+import { toast } from "@/components/ui/toast";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getAssetPath, getRenderableVideoUrl, getWallpaperThumbnailUrl } from "@/lib/assetPath";
 import { cn } from "@/lib/utils";
@@ -40,10 +39,9 @@ import {
 } from "./cursorMotionPresets";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import { getDefaultBorderRadiusPercent } from "./projectPersistence";
-import { SliderControl } from "./SliderControl";
-import { WallpaperGrid } from "./WallpaperGrid";
-import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { SettingsRow } from "./SettingsRow";
+import { SettingsCategory, SettingsSections } from "./SettingsSections";
+import { SliderControl } from "./SliderControl";
 import type {
 	AnnotationRegion,
 	AnnotationType,
@@ -74,6 +72,7 @@ import {
 	DEFAULT_CURSOR_CLICK_EFFECT_SCALE,
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SWAY,
+	DEFAULT_INTERACTION_SOUND_VOLUME,
 	DEFAULT_PADDING,
 	DEFAULT_WEBCAM_MARGIN,
 	DEFAULT_WEBCAM_POSITION_PRESET,
@@ -93,6 +92,7 @@ import {
 	cursorSetAssets,
 	getCursorStyleSizeMultiplier,
 } from "./videoPlayback/uploadedCursorAssets";
+import { WallpaperGrid } from "./WallpaperGrid";
 import { WebcamCropControl } from "./WebcamCropControl";
 import {
 	getCropMatchedWebcamHeightPercent,
@@ -501,6 +501,9 @@ interface SettingsPanelProps {
 	onCursorClickEffectScaleChange?: (scale: number) => void;
 	cursorClickEffectOpacity?: number;
 	onCursorClickEffectOpacityChange?: (opacity: number) => void;
+	/** Mouse-click and typing sound volume, 0..1 (0 = off). */
+	interactionSoundVolume?: number;
+	onInteractionSoundVolumeChange?: (volume: number) => void;
 	cursorClickEffectDurationMs?: number;
 	onCursorClickEffectDurationMsChange?: (duration: number) => void;
 	cursorClickBounce?: number;
@@ -946,6 +949,8 @@ export function SettingsPanel({
 	onCursorClickEffectScaleChange,
 	cursorClickEffectOpacity = DEFAULT_CURSOR_CLICK_EFFECT_OPACITY,
 	onCursorClickEffectOpacityChange,
+	interactionSoundVolume = DEFAULT_INTERACTION_SOUND_VOLUME,
+	onInteractionSoundVolumeChange,
 	cursorClickEffectDurationMs = DEFAULT_CURSOR_CLICK_EFFECT_DURATION_MS,
 	onCursorClickEffectDurationMsChange,
 	cursorClickBounce = 1,
@@ -2981,6 +2986,46 @@ export function SettingsPanel({
 									}
 								/>
 							)}
+							<div className="grid gap-2 border-t border-foreground/10 pt-3">
+								<div className="flex items-center justify-between gap-3">
+									<span className="text-xs text-muted-foreground">
+										{tSettings(
+											"effects.interactionSounds.title",
+											"Click & typing sounds",
+										)}
+									</span>
+									<Switch
+										aria-label={tSettings(
+											"effects.interactionSounds.title",
+											"Click & typing sounds",
+										)}
+										checked={interactionSoundVolume > 0}
+										onCheckedChange={(enabled) =>
+											onInteractionSoundVolumeChange?.(enabled ? 1 : 0)
+										}
+									/>
+								</div>
+								{interactionSoundVolume > 0 ? (
+									<SliderControl
+										label={tSettings(
+											"effects.interactionSounds.volume",
+											"Sound Volume",
+										)}
+										value={interactionSoundVolume}
+										min={0.05}
+										max={1}
+										step={0.05}
+										onChange={(v) => onInteractionSoundVolumeChange?.(v)}
+										formatValue={(v) => `${Math.round(v * 100)}%`}
+									/>
+								) : null}
+								<div className="text-[11px] leading-snug text-muted-foreground/80">
+									{tSettings(
+										"effects.interactionSounds.hint",
+										"Adds a sound to every mouse click and key press in new recordings. Which keys you press is never saved.",
+									)}
+								</div>
+							</div>
 							{advanced && showDevMotionControls ? (
 								<div className="rounded-lg border border-foreground/10 bg-foreground/[0.03] px-3 py-2">
 									<div className="text-xs text-muted-foreground">

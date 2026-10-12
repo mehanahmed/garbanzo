@@ -87,4 +87,22 @@ describe("timeline source audio tracks", () => {
 			}),
 		).toEqual([{ id: "mixed", label: "Source", peaks: source }]);
 	});
+
+	it("adds a click & typing sounds lane after the recorded tracks", () => {
+		const mic = peaks(2);
+		const sounds = peaks(3);
+
+		expect(
+			buildTimelineSourceAudioTracks({
+				sourceAudioPeaks: null,
+				micSidecarPeaks: mic,
+				systemSidecarPeaks: null,
+				interactionSoundPeaks: sounds,
+				labels: { ...labels, sfx: "Click & typing sounds" },
+			}),
+		).toEqual([
+			{ id: "mic", label: "Source Mic", peaks: mic },
+			{ id: "sfx", label: "Click & typing sounds", peaks: sounds },
+		]);
+	});
 });

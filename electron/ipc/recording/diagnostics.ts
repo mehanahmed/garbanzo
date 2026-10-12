@@ -1,12 +1,13 @@
-import { isLibrarySequenceSource } from "./sequenceSource";
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import { promisify } from "node:util";
 import { COMPANION_AUDIO_LAYOUTS } from "../constants";
+import { getInteractionSoundTrackPath } from "../cursor/interactionSounds";
 import { getFfmpegBinaryPath, getFfprobeBinaryPath } from "../ffmpeg/binary";
 import { lastNativeCaptureDiagnostics, setLastNativeCaptureDiagnostics } from "../state";
 import type { CompanionAudioCandidate, NativeCaptureDiagnostics } from "../types";
 import { parseJsonWithByteOrderMark } from "../utils";
+import { isLibrarySequenceSource } from "./sequenceSource";
 
 const execFileAsync = promisify(execFile);
 export const MIN_VALID_RECORDED_VIDEO_BYTES = 1024;
@@ -508,6 +509,26 @@ export async function getCompanionAudioFallbackPaths(videoPath: string) {
  * of the video.  Other layouts keep the embedded track and add the mic sidecar.
  */
 export async function getCompanionAudioFallbackInfo(videoPath: string) {
+	const info = await getRecordedCompanionAudioFallbackInfo(videoPath);
+	const soundTrackPath = getInteractionSoundTrackPath(videoPath);
+	const soundTrackStat = await fs.stat(soundTrackPath).catch(() => null);
+	if (!soundTrackStat?.isFile() || soundTrackStat.size <= 44) {
+		return info;
+	}
+
+	// Click/typing sounds are an extra track. Keep the video's own audio in the
+	// list when it is the only other source, so it still plays and exports.
+	let paths = info.paths;
+	if (paths.length === 0 && (await hasEmbeddedAudioStream(videoPath))) {
+		paths = [videoPath];
+	}
+	return {
+		paths: [...paths, soundTrackPath],
+		startDelayMsByPath: info.startDelayMsByPath,
+	};
+}
+
+async function getRecordedCompanionAudioFallbackInfo(videoPath: string) {
 	const companionCandidates = await getUsableCompanionAudioCandidates(videoPath);
 	if (companionCandidates.length === 0) {
 		return { paths: [], startDelayMsByPath: {} };

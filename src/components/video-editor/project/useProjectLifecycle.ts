@@ -157,6 +157,7 @@ export function useProjectLifecycle(input: Input) {
 		appearance.setCursorClickEffectColor(editor.cursorClickEffectColor);
 		appearance.setCursorClickEffectScale(editor.cursorClickEffectScale);
 		appearance.setCursorClickEffectOpacity(editor.cursorClickEffectOpacity);
+		appearance.setInteractionSoundVolume(editor.interactionSoundVolume);
 		appearance.setCursorClickEffectDurationMs(editor.cursorClickEffectDurationMs);
 		appearance.setZoomSmoothness(editor.zoomSmoothness);
 		appearance.setZoomClassicMode(editor.zoomClassicMode);

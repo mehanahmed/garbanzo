@@ -1,9 +1,15 @@
-import type { AudioRegion } from "@/components/video-editor/types";
 import { SOURCE_AUDIO_NORMALIZE_GAIN } from "@/components/video-editor/audio/audioTypes";
+import type { AudioRegion } from "@/components/video-editor/types";
+import {
+	INTERACTION_SOUND_TRACK_MARKER,
+	isInteractionSoundTrackPath,
+} from "./interactionSoundTrack";
 import { resolveSourceAudioFallbackPaths } from "./sourceAudioFallback";
 
-export type SourceTrackId = "mic" | "system" | "mixed";
-export type ResolvedAudioTrackKind = "user" | "system" | "mic" | "mixed" | "embedded";
+export type SourceTrackId = "mic" | "system" | "mixed" | "sfx";
+
+export { INTERACTION_SOUND_TRACK_MARKER, isInteractionSoundTrackPath };
+export type ResolvedAudioTrackKind = "user" | "system" | "mic" | "mixed" | "sfx" | "embedded";
 
 export interface ResolvedAudioTrack {
 	id: string;
@@ -31,6 +37,7 @@ export interface ResolvedAudioPlan {
 
 export function getSourceTrackIdFromPath(audioPath: string): SourceTrackId {
 	const normalized = audioPath.toLowerCase();
+	if (isInteractionSoundTrackPath(normalized)) return "sfx";
 	if (normalized.includes(".mic.")) return "mic";
 	if (normalized.includes(".system.")) return "system";
 	return "mixed";
@@ -67,6 +74,7 @@ export function buildResolvedAudioPlan(input: {
 	if (pathsByTrack.system) playbackPaths.push(pathsByTrack.system);
 	if (pathsByTrack.mic) playbackPaths.push(pathsByTrack.mic);
 	if (!hasDedicatedTracks && pathsByTrack.mixed) playbackPaths.push(pathsByTrack.mixed);
+	if (pathsByTrack.sfx) playbackPaths.push(pathsByTrack.sfx);
 
 	const includeEmbeddedInExport = !pathsByTrack.system && !pathsByTrack.mixed;
 	const resolvedRegions = (input.audioRegions ?? [])

@@ -27,7 +27,8 @@ export interface CursorTelemetryPoint {
 		| "double-click"
 		| "right-click"
 		| "middle-click"
-		| "mouseup";
+		| "mouseup"
+		| "keypress";
 	cursorType?:
 		| "arrow"
 		| "text"
@@ -70,6 +71,8 @@ export const DEFAULT_CURSOR_CLICK_EFFECT: CursorClickEffectStyle = "none";
 export const DEFAULT_CURSOR_CLICK_EFFECT_COLOR = "#2563EB";
 export const DEFAULT_CURSOR_CLICK_EFFECT_SCALE = 1;
 export const DEFAULT_CURSOR_CLICK_EFFECT_OPACITY = 1;
+/** Volume of the recorded mouse-click and typing sounds; 0 turns them off. */
+export const DEFAULT_INTERACTION_SOUND_VOLUME = 1;
 export const DEFAULT_CURSOR_CLICK_EFFECT_DURATION_MS = 600;
 
 export function normalizeCursorClickEffectStyle(

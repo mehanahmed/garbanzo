@@ -161,6 +161,8 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onCursorClickEffectScaleChange: appearance.setCursorClickEffectScale,
 		cursorClickEffectOpacity: appearance.cursorClickEffectOpacity,
 		onCursorClickEffectOpacityChange: appearance.setCursorClickEffectOpacity,
+		interactionSoundVolume: appearance.interactionSoundVolume,
+		onInteractionSoundVolumeChange: appearance.setInteractionSoundVolume,
 		cursorClickEffectDurationMs: appearance.cursorClickEffectDurationMs,
 		onCursorClickEffectDurationMsChange: appearance.setCursorClickEffectDurationMs,
 		cursorClickBounce: appearance.cursorClickBounce,

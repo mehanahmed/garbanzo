@@ -1,5 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import type { SourceAudioTrackSettings } from "@/components/video-editor/audio/audioTypes";
+import { isInteractionSoundTrackPath } from "@/lib/exporter/audioRoutingEngine";
+import { removeInteractionSoundTrack } from "@/lib/exporter/sourceAudioFallback";
 import { resolveSourceTrackRoutingPolicy } from "@/lib/exporter/sourceTrackRoutingPolicy";
 import type { AudioRegion, ClipRegion } from "../types";
 import { findClipAtTimelineTime } from "../types";
@@ -41,6 +43,8 @@ interface UseVideoEditorAudioParams {
 	duration: number;
 	isPlaying: boolean;
 	previewVolume: number;
+	/** Mouse-click and typing sound volume, 0..1 (0 leaves the track out). */
+	interactionSoundVolume?: number;
 	sourceAudioFallbackRefreshKey?: number;
 	summarizeErrorMessage: (message: string) => string;
 	onSourceFallbackLoadError: (error: unknown) => void;
@@ -60,6 +64,7 @@ export function useVideoEditorAudio({
 	duration,
 	isPlaying,
 	previewVolume,
+	interactionSoundVolume = 1,
 	sourceAudioFallbackRefreshKey = 0,
 	summarizeErrorMessage,
 	onSourceFallbackLoadError,
@@ -69,12 +74,25 @@ export function useVideoEditorAudio({
 		[currentSourcePath],
 	);
 
-	const { sourceAudioFallbackPaths, sourceAudioFallbackStartDelayMsByPath } =
-		useSourceAudioFallback({
-			currentSourcePath: fallbackLookupSourcePath,
-			refreshKey: sourceAudioFallbackRefreshKey,
-			summarizeErrorMessage,
-		});
+	const {
+		sourceAudioFallbackPaths: discoveredSourceAudioFallbackPaths,
+		sourceAudioFallbackStartDelayMsByPath,
+	} = useSourceAudioFallback({
+		currentSourcePath: fallbackLookupSourcePath,
+		refreshKey: sourceAudioFallbackRefreshKey,
+		summarizeErrorMessage,
+	});
+
+	const soundVolume = Number.isFinite(interactionSoundVolume)
+		? Math.max(0, Math.min(1, interactionSoundVolume))
+		: 1;
+	const soundsEnabled = soundVolume > 0;
+	// With click/typing sounds off, leave their track out entirely so playback
+	// and export take exactly the same path as a recording without them.
+	const sourceAudioFallbackPaths = useMemo(() => {
+		if (soundsEnabled) return discoveredSourceAudioFallbackPaths;
+		return removeInteractionSoundTrack(currentSourcePath, discoveredSourceAudioFallbackPaths);
+	}, [currentSourcePath, discoveredSourceAudioFallbackPaths, soundsEnabled]);
 
 	const sourceTrackRoutingPolicy = useMemo(
 		() => resolveSourceTrackRoutingPolicy(currentSourcePath, sourceAudioFallbackPaths),
@@ -96,14 +114,14 @@ export function useVideoEditorAudio({
 
 	const {
 		sourceAudioTrackMeta,
-		activeSourceAudioTrackSettings,
-		selectedClipSourceAudioTrackSettings,
-		getSourceAudioTrackSettingsForClip,
+		activeSourceAudioTrackSettings: baseActiveSourceAudioTrackSettings,
+		selectedClipSourceAudioTrackSettings: baseSelectedClipSourceAudioTrackSettings,
+		getSourceAudioTrackSettingsForClip: getBaseSourceAudioTrackSettingsForClip,
 		onSourceAudioTracksMetaChange,
 		onSelectedClipSourceAudioTrackVolumeChange,
 		onSelectedClipSourceAudioTrackNormalizeChange,
 		embeddedSourcePreviewGain,
-		getSourceTrackPreviewGain,
+		getSourceTrackPreviewGain: getBaseSourceTrackPreviewGain,
 	} = useClipAudioSettingsController({
 		selectedClipId,
 		activeClipId: activeClipIdAtCurrentTime,
@@ -112,6 +130,33 @@ export function useVideoEditorAudio({
 		defaultSourceAudioTrackSettings,
 		setDefaultSourceAudioTrackSettings,
 	});
+
+	const withSoundVolume = useCallback(
+		(settings: SourceAudioTrackSettings): SourceAudioTrackSettings =>
+			soundsEnabled && soundVolume !== 1
+				? { ...settings, sfx: { volume: soundVolume, normalize: false } }
+				: settings,
+		[soundVolume, soundsEnabled],
+	);
+	const activeSourceAudioTrackSettings = useMemo(
+		() => withSoundVolume(baseActiveSourceAudioTrackSettings),
+		[baseActiveSourceAudioTrackSettings, withSoundVolume],
+	);
+	const selectedClipSourceAudioTrackSettings = useMemo(
+		() => withSoundVolume(baseSelectedClipSourceAudioTrackSettings),
+		[baseSelectedClipSourceAudioTrackSettings, withSoundVolume],
+	);
+	const getSourceAudioTrackSettingsForClip = useCallback(
+		(clipId: string | null) => withSoundVolume(getBaseSourceAudioTrackSettingsForClip(clipId)),
+		[getBaseSourceAudioTrackSettingsForClip, withSoundVolume],
+	);
+	const getSourceTrackPreviewGain = useCallback(
+		(audioPath: string) =>
+			isInteractionSoundTrackPath(audioPath)
+				? soundVolume
+				: getBaseSourceTrackPreviewGain(audioPath),
+		[getBaseSourceTrackPreviewGain, soundVolume],
+	);
 
 	const { playSourceAudioPreview } = useAudioPreviewSync({
 		audioRegions,

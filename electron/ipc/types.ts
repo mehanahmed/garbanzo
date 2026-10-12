@@ -97,7 +97,9 @@ export type CursorInteractionType =
 	| "double-click"
 	| "right-click"
 	| "middle-click"
-	| "mouseup";
+	| "mouseup"
+	// A key went down (which key is never stored). Used only for typing sounds.
+	| "keypress";
 
 export interface CursorTelemetryPoint {
 	timeMs: number;
@@ -121,7 +123,7 @@ export type NativeMacWindowSource = {
 	height?: number;
 };
 
-export type HookEventName = "mousedown" | "mouseup" | "mousemove";
+export type HookEventName = "mousedown" | "mouseup" | "mousemove" | "keydown" | "keyup";
 
 export type HookMouseEvent = {
 	button?: number;
@@ -140,7 +142,11 @@ export type HookMouseEvent = {
 	};
 };
 
-export type HookEventListener = (event: HookMouseEvent) => void;
+export type HookKeyboardEvent = {
+	keycode?: number;
+};
+
+export type HookEventListener = (event: HookMouseEvent & HookKeyboardEvent) => void;
 
 export type UiohookLike = {
 	on: (eventName: HookEventName, listener: HookEventListener) => void;

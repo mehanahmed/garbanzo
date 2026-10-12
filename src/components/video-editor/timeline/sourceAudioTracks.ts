@@ -20,6 +20,40 @@ export function buildTimelineSourceAudioTracks({
 	sourceAudioPeaks,
 	micSidecarPeaks,
 	systemSidecarPeaks,
+	interactionSoundPeaks = null,
+	labels,
+}: {
+	sourceAudioPeaks: AudioPeaksData | null;
+	micSidecarPeaks: AudioPeaksData | null;
+	systemSidecarPeaks: AudioPeaksData | null;
+	interactionSoundPeaks?: AudioPeaksData | null;
+	labels: {
+		system: string;
+		mic: string;
+		mixed: string;
+		sfx?: string;
+	};
+}): SourceAudioTrackWithPeaks[] {
+	const tracks = buildRecordedSourceAudioTracks({
+		sourceAudioPeaks,
+		micSidecarPeaks,
+		systemSidecarPeaks,
+		labels,
+	});
+	if (interactionSoundPeaks) {
+		tracks.push({
+			id: "sfx",
+			label: labels.sfx ?? "Click & typing sounds",
+			peaks: interactionSoundPeaks,
+		});
+	}
+	return tracks;
+}
+
+function buildRecordedSourceAudioTracks({
+	sourceAudioPeaks,
+	micSidecarPeaks,
+	systemSidecarPeaks,
 	labels,
 }: {
 	sourceAudioPeaks: AudioPeaksData | null;

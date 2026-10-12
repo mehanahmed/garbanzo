@@ -1,10 +1,3 @@
-import { persistRecentMetadata } from "../project/recentMetadata";
-import { renameLibraryProject } from "../project/renameLibraryProject";
-import { createUntitledProject } from "../project/createUntitledProject";
-import { trashLibraryProjects } from "../project/trashProjects";
-import { getRecordingThumbnail } from "../recording/thumbnail";
-import { listRecordings, setRecordingsRemoved } from "../recording/library";
-import { importRecording, discardRecordingImport } from "../recording/importRecording";
 import { randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
@@ -13,7 +6,9 @@ import { BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { RECORDINGS_DIR } from "../../appPaths";
 import { buildMediaUrl, getMediaServerBaseUrl } from "../../mediaServer";
 import { LEGACY_PROJECT_FILE_EXTENSIONS, PROJECT_FILE_EXTENSION } from "../constants";
+import { getInteractionSoundTrackPath } from "../cursor/interactionSounds";
 import { getProjectBackupPath, writeProjectFileAtomically } from "../project/atomicSave";
+import { createUntitledProject } from "../project/createUntitledProject";
 import {
 	getProjectsDir,
 	getProjectThumbnailPath,
@@ -21,9 +16,9 @@ import {
 	isTrustedProjectPath,
 	listProjectLibraryEntries,
 	loadProjectFromPath,
-	readProjectPreview,
 	loadRecentProjectPaths,
 	persistRecordingsDirectorySetting,
+	readProjectPreview,
 	rememberApprovedLocalReadPath,
 	rememberRecentProject,
 	replaceApprovedSessionLocalReadPaths,
@@ -31,7 +26,13 @@ import {
 	saveProjectThumbnail,
 	saveRecentProjectPaths,
 } from "../project/manager";
+import { persistRecentMetadata } from "../project/recentMetadata";
+import { renameLibraryProject } from "../project/renameLibraryProject";
 import { persistRecordingSessionManifest, resolveRecordingSession } from "../project/session";
+import { trashLibraryProjects } from "../project/trashProjects";
+import { discardRecordingImport, importRecording } from "../recording/importRecording";
+import { listRecordings, setRecordingsRemoved } from "../recording/library";
+import { getRecordingThumbnail } from "../recording/thumbnail";
 import {
 	currentProjectPath,
 	currentRecordingSession,
@@ -45,8 +46,8 @@ import {
 	getRecordingsDir,
 	getTelemetryPathForVideo,
 	isAutoRecordingPath,
-	normalizeVideoSourcePath,
 	normalizePath,
+	normalizeVideoSourcePath,
 	parseJsonWithByteOrderMark,
 } from "../utils";
 
@@ -929,6 +930,7 @@ export function registerProjectHandlers() {
 			// Also delete the cursor telemetry sidecar if it exists
 			const telemetryPath = getTelemetryPathForVideo(resolvedPath);
 			await fs.unlink(telemetryPath).catch(() => undefined);
+			await fs.unlink(getInteractionSoundTrackPath(resolvedPath)).catch(() => undefined);
 			const currentResolved = currentVideoPath
 				? await fs.realpath(currentVideoPath).catch(() => currentVideoPath)
 				: null;
