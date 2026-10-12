@@ -25,7 +25,7 @@ const APP_ROOT = path.join(electronWindowsDir, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(APP_ROOT, "dist");
 const WINDOW_ICON_FILENAME =
-	process.platform === "darwin" ? "recordlymac-512.png" : "recordly-512.png";
+	process.platform === "darwin" ? "camversemac-512.png" : "camverse-512.png";
 const WINDOW_ICON_PATH = path.join(
 	process.env.VITE_PUBLIC || RENDERER_DIST,
 	"app-icons",
@@ -502,7 +502,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		backgroundColor: "#00000000",
 		resizable: false,
 		alwaysOnTop: true,
-		// The HUD is Recordly's persistent top-level window, so it owns the
+		// The HUD is CamVerse's persistent top-level window, so it owns the
 		// Windows taskbar entry while auxiliary overlays stay hidden there.
 		...getHudOverlayTaskbarOptions(process.platform),
 		hasShadow: false,
@@ -543,7 +543,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		applyHudOverlayCaptureProtectionToWindow(win, hudOverlayHiddenFromCapture);
 		if (process.platform === "win32") {
 			// A focusable window is required for a Windows taskbar entry, but the
-			// always-on-top HUD must not steal focus when Recordly starts.
+			// always-on-top HUD must not steal focus when CamVerse starts.
 			win.showInactive();
 		} else {
 			win.show();
@@ -766,7 +766,7 @@ export function createUpdateToastWindow(): BrowserWindow {
 
 	win.setVisibleOnAllWorkspaces(true, {
 		visibleOnFullScreen: true,
-		// Keep Recordly a foreground application so macOS does not temporarily
+		// Keep CamVerse a foreground application so macOS does not temporarily
 		// remove its Dock icon while showing an overlay window.
 		skipTransformProcessType: process.platform === "darwin",
 	});
@@ -970,7 +970,7 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "Recordly",
+		title: "CamVerse",
 		show: false,
 		backgroundColor: "#000000",
 		webPreferences: {
@@ -1131,7 +1131,7 @@ export function createCountdownWindow(): BrowserWindow {
 
 	win.setVisibleOnAllWorkspaces(true, {
 		visibleOnFullScreen: true,
-		// Keep Recordly a foreground application so macOS does not temporarily
+		// Keep CamVerse a foreground application so macOS does not temporarily
 		// remove its Dock icon while showing the countdown.
 		skipTransformProcessType: process.platform === "darwin",
 	});

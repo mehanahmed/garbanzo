@@ -1,7 +1,7 @@
 /**
  * ANC (noise cancellation) mode for the microphone track.
  *
- * Recordly keeps the microphone as a separate sidecar file next to each
+ * CamVerse keeps the microphone as a separate sidecar file next to each
  * recording (".mic.wav" / ".mic.m4a"). When ANC is on, the main process runs
  * that file through an FFmpeg cleanup chain right after recording stops:
  *

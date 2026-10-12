@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import type {
 	ExportBackendPreference,
 	ExportEncodingMode,
@@ -84,7 +85,9 @@ export function normalizeExportPreferences(raw: Partial<ExportPreferences>): Exp
 			raw.gifSizePreset === "original"
 				? raw.gifSizePreset
 				: "medium",
-		publishDestination: raw.publishDestination === "local" ? "local" : "link",
+		// CamVerse saves exports to this PC; share links need Recordly's cloud.
+		publishDestination:
+			BRAND.cloudShareEnabled && raw.publishDestination !== "local" ? "link" : "local",
 		includeCaptionSidecar: raw.includeCaptionSidecar === true,
 	};
 }

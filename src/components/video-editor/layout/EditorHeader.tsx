@@ -1,4 +1,5 @@
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { BRAND } from "@/lib/brand";
 import { Separator } from "@heroui/react";
 import {
 	House,
@@ -222,7 +223,7 @@ export function EditorHeader(props: Props) {
 					</Button>
 				</div>
 				{SHOW_PRESETS_BUTTON && <EditorPresetMenu t={t} presets={presets} />}
-				<FeedbackDialog />
+				{BRAND.accountsEnabled && <FeedbackDialog />}
 				<EditorExportMenu
 					t={t}
 					exportSettings={exportSettings}

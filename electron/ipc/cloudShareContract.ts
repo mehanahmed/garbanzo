@@ -26,7 +26,7 @@ export function normalizeCloudEndpoint(value: unknown): string {
 	}
 	const url = parseUrl(value.trim(), "Cloud share endpoint");
 	if (!TRUSTED_SHARE_ORIGINS.has(url.origin)) {
-		throw new Error("Cloud sharing is only allowed through the Recordly service.");
+		throw new Error("Cloud sharing is only allowed through the CamVerse service.");
 	}
 	if (url.pathname !== "/api/upload" || url.search) {
 		throw new Error("The cloud share endpoint is invalid.");

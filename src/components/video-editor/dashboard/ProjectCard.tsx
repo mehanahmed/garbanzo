@@ -1,4 +1,5 @@
 import { Globe } from "@phosphor-icons/react";
+import { BRAND } from "@/lib/brand";
 import { ProjectFolderChips } from "./ProjectFolderChips";
 import { RawThumbnail } from "./RawRecordings";
 import { AccountAvatar } from "@/components/ui/account-avatar";
@@ -256,12 +257,14 @@ export function ProjectCard({
 										id="rename"
 										onAction={() => {
 											setName(entry.name);
-											requestAnimationFrame(() => requestAnimationFrame(() => setEditing(true)));
+											requestAnimationFrame(() =>
+												requestAnimationFrame(() => setEditing(true)),
+											);
 										}}
 									>
 										Rename
 									</Dropdown.Item>
-									{!entry.rawSource && (
+									{!entry.rawSource && BRAND.cloudShareEnabled && (
 										<Dropdown.Item
 											id="share"
 											onAction={() =>

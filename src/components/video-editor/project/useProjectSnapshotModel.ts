@@ -40,7 +40,7 @@ export function useProjectSnapshotModel({
 	const projectDisplayName = useMemo(() => {
 		const fileName = project.currentProjectPath?.split(/[\\/]/).pop() ?? "Untitled Project";
 		return (
-			fileName.replace(/\.recordly$/i, "").replace(/\.[^.]+$/, "") ||
+			fileName.replace(/\.(camverse|recordly)$/i, "").replace(/\.[^.]+$/, "") ||
 			t("editor.project.untitled", "Untitled Project")
 		);
 	}, [project.currentProjectPath, t]);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BRAND } from "@/lib/brand";
 import type { User } from "@supabase/supabase-js";
 import { loadAppSetting, saveAppSetting } from "@/lib/appSettings";
 import { RecordlySignInDialog } from "./RecordlySignInDialog";
@@ -29,10 +30,14 @@ export function OnboardingController({
 	}, []);
 
 	useEffect(() => {
+		if (!BRAND.accountsEnabled) return;
 		if (!ready || checked.current) return;
 		checked.current = true;
 		if (!loadAppSetting<boolean>(SEEN_KEY)) setOpen(true);
 	}, [ready]);
+
+	// CamVerse has no accounts yet, so the sign-in onboarding is not shown.
+	if (!BRAND.accountsEnabled) return null;
 
 	return (
 		<RecordlySignInDialog

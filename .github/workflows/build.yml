@@ -3,6 +3,11 @@ name: Build Electron App
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the Windows and Linux installers to a GitHub Release (direct download link + auto-update feed)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -37,6 +42,12 @@ jobs:
 
       - name: Build Windows app
         shell: pwsh
+        env:
+          # Code signing: add these two repository secrets (a base64 .pfx or a
+          # URL, and its password) and the installer is signed automatically.
+          # Without them the build is unsigned, which makes browsers warn.
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
           npm run build:platform-native-helpers
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -208,3 +219,37 @@ jobs:
             release/SHA256SUMS*.txt
           if-no-files-found: error
           retention-days: 30
+
+  publish-release:
+    name: Publish GitHub Release
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release }}
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-release"
+          path: artifacts
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          mapfile -t FILES < <(find artifacts/windows-x64-release artifacts/linux-x64-release -type f \
+            \( -name '*.exe' -o -name '*.AppImage' -o -name '*.blockmap' -o -name 'latest*.yml' -o -name 'SHA256SUMS*.txt' \))
+          printf 'Uploading %s\n' "${FILES[@]}"
+          NOTES="CamVerse ${VERSION}. Windows: download CamVerse-Setup-${VERSION}.exe. CamVerse is based on Recordly (AGPL-3.0); source code is in this repository."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" --title "CamVerse ${VERSION}" --notes "$NOTES" --target "$GITHUB_SHA"
+          fi

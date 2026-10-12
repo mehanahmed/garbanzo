@@ -1,7 +1,8 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "dev.recordly.app",
+  "appId": "com.camverse.app",
+  "copyright": "CamVerse by Color Hut. Based on Recordly by webadderall (AGPL-3.0).",
   "electronUpdaterCompatibility": ">=2.16",
   "asar": true,
   "asarUnpack": [
@@ -10,11 +11,11 @@
     "node_modules/uiohook-napi/**",
     "electron/native/bin/**"
   ],
-  "productName": "Recordly",
+  "productName": "CamVerse",
   "protocols": [
     {
-      "name": "Recordly authentication",
-      "schemes": ["recordly"]
+      "name": "CamVerse authentication",
+      "schemes": ["camverse"]
     }
   ],
   "npmRebuild": true,
@@ -52,8 +53,8 @@
   "publish": [
     {
       "provider": "github",
-      "owner": "webadderall",
-      "repo": "Recordly",
+      "owner": "princeshiamofficial",
+      "repo": "garbanzo",
       "tagNamePrefix": "v",
       "publishAutoUpdate": true
     }
@@ -76,29 +77,29 @@
     "icon": "icons/icons/mac/icon.icns",
     "artifactName": "${productName}-${arch}.${ext}",
     "extendInfo": {
-      "NSAudioCaptureUsageDescription": "Recordly needs audio capture permission to record system audio.",
-      "NSCameraUsageDescription": "Recordly needs camera access to record webcam video.",
-      "NSMicrophoneUsageDescription": "Recordly needs microphone access to record voice audio.",
+      "NSAudioCaptureUsageDescription": "CamVerse needs audio capture permission to record system audio.",
+      "NSCameraUsageDescription": "CamVerse needs camera access to record webcam video.",
+      "NSMicrophoneUsageDescription": "CamVerse needs microphone access to record voice audio.",
       "NSCameraUseContinuityCameraDeviceType": true,
       "com.apple.security.device.audio-input": true,
       "CFBundleDocumentTypes": [
         {
-          "CFBundleTypeName": "Recordly Project",
+          "CFBundleTypeName": "CamVerse Project",
           "CFBundleTypeRole": "Editor",
-          "CFBundleTypeExtensions": ["recordly"],
+          "CFBundleTypeExtensions": ["camverse", "recordly"],
           "CFBundleTypeIconFile": "icon.icns",
           "LSHandlerRank": "Owner",
-          "LSItemContentTypes": ["dev.recordly.app.project"]
+          "LSItemContentTypes": ["com.camverse.app.project"]
         }
       ],
       "UTExportedTypeDeclarations": [
         {
-          "UTTypeIdentifier": "dev.recordly.app.project",
-          "UTTypeDescription": "Recordly Project",
+          "UTTypeIdentifier": "com.camverse.app.project",
+          "UTTypeDescription": "CamVerse Project",
           "UTTypeConformsTo": ["public.json"],
           "UTTypeTagSpecification": {
-            "public.filename-extension": ["recordly"],
-            "public.mime-type": "application/x-recordly-project"
+            "public.filename-extension": ["camverse"],
+            "public.mime-type": "application/x-camverse-project"
           }
         }
       ]
@@ -117,14 +118,15 @@
       "nsis"
     ],
     "icon": "icons/icons/win/icon.ico",
-    "executableName": "Recordly",
-    "artifactName": "${productName}-windows-${arch}.${ext}"
+    "executableName": "CamVerse",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "Recordly"
+    "shortcutName": "CamVerse",
+    "uninstallDisplayName": "CamVerse"
   }
 }

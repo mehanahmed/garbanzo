@@ -29,7 +29,7 @@ export default function App() {
 		() => new URLSearchParams(window.location.search).get("windowType") || "",
 	);
 	const { t } = useI18n();
-	const appIconSrc = "/app-icons/recordly-128.png";
+	const appIconSrc = "/app-icons/camverse-128.png";
 
 	useEffect(() => {
 		document.documentElement.dataset.windowType = windowType;
@@ -62,10 +62,10 @@ export default function App() {
 	useEffect(() => {
 		document.title =
 			windowType === "editor"
-				? t("app.editorTitle", "Recordly Editor")
+				? t("app.editorTitle", "CamVerse Editor")
 				: windowType === "teleprompter"
 					? "Teleprompter"
-					: t("app.name", "Recordly");
+					: t("app.name", "CamVerse");
 	}, [windowType, t]);
 
 	let content;
@@ -100,12 +100,12 @@ export default function App() {
 					<Card className="flex-row items-center gap-4 px-6 py-5">
 						<img
 							src={appIconSrc}
-							alt={t("app.name", "Recordly")}
+							alt={t("app.name", "CamVerse")}
 							className="h-12 w-12 rounded-xl"
 						/>
 						<div>
 							<h1 className="text-xl font-semibold tracking-tight">
-								{t("app.name", "Recordly")}
+								{t("app.name", "CamVerse")}
 							</h1>
 							<p className="text-sm text-foreground/65">
 								{t("app.subtitle", "Screen recording and editing")}

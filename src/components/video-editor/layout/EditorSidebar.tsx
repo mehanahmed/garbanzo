@@ -1,4 +1,5 @@
 import { AccountAvatar } from "@/components/ui/account-avatar";
+import { BRAND } from "@/lib/brand";
 import type { User } from "@supabase/supabase-js";
 import { Camera, ClosedCaptioning, Cursor, Gear, FrameCorners } from "@/components/ui/icons";
 import {
@@ -104,18 +105,20 @@ export function EditorSidebar({
 						</Tooltip>
 					))}
 				</ToggleButtonGroup>
-				<Tooltip>
-					<Button
-						variant="ghost"
-						isIconOnly
-						className="mt-auto"
-						aria-label="Recordly account"
-						onPress={onAccountClick}
-					>
-						<AccountAvatar user={accountUser} className="!size-7" />
-					</Button>
-					<Tooltip.Content placement="right">Account</Tooltip.Content>
-				</Tooltip>
+				{BRAND.accountsEnabled && (
+					<Tooltip>
+						<Button
+							variant="ghost"
+							isIconOnly
+							className="mt-auto"
+							aria-label="CamVerse account"
+							onPress={onAccountClick}
+						>
+							<AccountAvatar user={accountUser} className="!size-7" />
+						</Button>
+						<Tooltip.Content placement="right">Account</Tooltip.Content>
+					</Tooltip>
+				)}
 			</nav>
 			<aside
 				aria-label={panelContent ? "Clips" : undefined}

@@ -530,9 +530,9 @@ describe("source-specific webcam metadata", () => {
 
 describe("user preferences stay independent from projects and presets", () => {
 	afterEach(() => vi.unstubAllGlobals());
-	it("defaults Publish to Link and persists Local and export settings across reloads", () => {
+	it("defaults Publish to Local (CamVerse has no share links) and persists export settings across reloads", () => {
 		vi.stubGlobal("localStorage", createStorageMock());
-		expect(loadEditorPreferences().publishDestination).toBe("link");
+		expect(loadEditorPreferences().publishDestination).toBe("local");
 		saveEditorPreferences({
 			publishDestination: "local",
 			exportQuality: "high",
@@ -548,7 +548,11 @@ describe("user preferences stay independent from projects and presets", () => {
 		saveEditorPreferences({ wallpaper: "#123456" });
 		expect(loadEditorPreferences().publishDestination).toBe("local");
 		expect(normalizeEditorPreferences({ publishDestination: null }).publishDestination).toBe(
-			"link",
+			"local",
+		);
+		// A saved "link" choice from Recordly falls back to Local in CamVerse.
+		expect(normalizeEditorPreferences({ publishDestination: "link" }).publishDestination).toBe(
+			"local",
 		);
 	});
 	it("drops export settings and machine paths from legacy presets", () => {

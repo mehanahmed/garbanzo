@@ -267,7 +267,7 @@ function createOverlayWindow(bounds: Rectangle): BrowserWindow {
 		focusable: false,
 		show: false,
 		enableLargerThanScreen: true,
-		title: "Recordly drawing",
+		title: "CamVerse drawing",
 		webPreferences: {
 			preload: path.join(drawingDir, "preload.mjs"),
 			nodeIntegration: false,

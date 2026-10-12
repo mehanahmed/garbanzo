@@ -87,7 +87,7 @@
 		"connectedZoomDuration": "Длительность интервала",
 		"connectedZoomEasing": "Кривая панорамирования",
 		"zoomEasingOptions": {
-			"recordly": "Recordly",
+			"recordly": "CamVerse",
 			"glide": "Плавно",
 			"smooth": "Мягко",
 			"snappy": "Резко",
@@ -261,6 +261,6 @@
 		"title": "Обновления",
 		"experimental": "Экспериментальные обновления",
 		"saveFailed": "Не удалось изменить канал обновлений.",
-		"experimentalDescription": "Вы включили экспериментальные обновления, поэтому можете протестировать последнее обновление Recordly до его широкого выпуска."
+		"experimentalDescription": "Вы включили экспериментальные обновления, поэтому можете протестировать последнее обновление CamVerse до его широкого выпуска."
 	}
 }

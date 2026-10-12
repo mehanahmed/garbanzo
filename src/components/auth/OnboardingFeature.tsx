@@ -33,17 +33,14 @@ const features = [
 // Decorative product illustrations stay crisp as the image frame changes size.
 function FeatureIllustration({ step }: { step: number }) {
 	return (
-		<div
-			aria-hidden="true"
-			className="flex h-full items-center justify-center p-6 sm:p-10"
-		>
+		<div aria-hidden="true" className="flex h-full items-center justify-center p-6 sm:p-10">
 			<div className="relative w-full max-w-[580px] overflow-hidden rounded-2xl border border-white/50 bg-white/85 text-zinc-900 shadow-2xl backdrop-blur-xl">
 				<div className="flex items-center gap-1.5 border-b border-black/5 px-4 py-3">
 					{[0, 1, 2].map((i) => (
 						<span key={i} className="size-2 rounded-full bg-zinc-300" />
 					))}
 					<span className="ml-3 text-xs font-medium">
-						{features[step].name === "Share" ? "Your recording" : "Recordly"}
+						{features[step].name === "Share" ? "Your recording" : "CamVerse"}
 					</span>
 				</div>
 				<div className="relative mx-5 mb-5 mt-4 flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-indigo-200 via-sky-100 to-rose-200">

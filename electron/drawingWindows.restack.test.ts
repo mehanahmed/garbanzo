@@ -134,7 +134,7 @@ describe("drawing toolbar stacking", () => {
 		for (const win of FakeWindow.created) win.emit("ready-to-show");
 	});
 
-	const overlay = () => FakeWindow.created.find((w) => w.options.title === "Recordly drawing");
+	const overlay = () => FakeWindow.created.find((w) => w.options.title === "CamVerse drawing");
 	const toolbar = () => FakeWindow.created.find((w) => w.options.title === "Drawing tools");
 
 	it("covers the work area, not the taskbar", () => {

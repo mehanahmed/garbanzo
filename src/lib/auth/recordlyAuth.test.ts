@@ -28,7 +28,7 @@ afterEach(() => {
 
 it("exchanges a callback once when live and pending delivery overlap", async () => {
 	const { completeAuthCallback } = await import("./recordlyAuth");
-	const url = "recordly://auth/callback?code=one-time-code";
+	const url = "camverse://auth/callback?code=one-time-code";
 	await Promise.all([completeAuthCallback(url), completeAuthCallback(url)]);
 	await completeAuthCallback(url);
 	expect(exchange).toHaveBeenCalledExactlyOnceWith("one-time-code");
@@ -38,7 +38,7 @@ it("shows provider errors without attempting a code exchange", async () => {
 	const { completeAuthCallback } = await import("./recordlyAuth");
 	await expect(
 		completeAuthCallback(
-			"recordly://auth/callback?error=denied&error_description=Sign-in+cancelled",
+			"camverse://auth/callback?error=denied&error_description=Sign-in+cancelled",
 		),
 	).rejects.toThrow("Sign-in cancelled");
 	expect(exchange).not.toHaveBeenCalled();
@@ -68,7 +68,7 @@ for (const dev of [true, false]) {
 			options: {
 				emailRedirectTo: dev
 					? "http://127.0.0.1:43821/auth/callback"
-					: "recordly://auth/callback",
+					: "camverse://auth/callback",
 				shouldCreateUser: true,
 			},
 		});
@@ -78,7 +78,7 @@ for (const dev of [true, false]) {
 it("does not accept dashboard implicit session tokens as a PKCE callback", async () => {
 	const { completeAuthCallback } = await import("./recordlyAuth");
 	await expect(
-		completeAuthCallback("recordly://auth/callback#access_token=test&refresh_token=test"),
-	).rejects.toThrow("Request a new sign-in link from Recordly");
+		completeAuthCallback("camverse://auth/callback#access_token=test&refresh_token=test"),
+	).rejects.toThrow("Request a new sign-in link from CamVerse");
 	expect(exchange).not.toHaveBeenCalled();
 });

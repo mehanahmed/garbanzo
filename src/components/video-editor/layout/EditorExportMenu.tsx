@@ -1,4 +1,5 @@
 import { ExportErrorReportButton } from "@/components/feedback/ExportErrorReportButton";
+import { BRAND } from "@/lib/brand";
 import { LinkSimple, HardDrive, Export } from "@phosphor-icons/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CloudShareButton } from "../cloud/CloudShareButton";
@@ -65,6 +66,7 @@ export function EditorExportMenu(props: Props) {
 	useEffect(() => {
 		if (props.shareRequestNonce > handledShareRequest.current) {
 			handledShareRequest.current = props.shareRequestNonce;
+			if (!BRAND.cloudShareEnabled) return;
 			setDestination("link");
 			props.handleOpenExportDropdown();
 		}
@@ -202,40 +204,42 @@ export function EditorExportMenu(props: Props) {
 						<div ref={contentRef}>
 							<div className="p-5 space-y-3">
 								<h2 className="text-sm font-semibold">Publish</h2>
-								<TagGroup
-									aria-label="Publish destination"
-									selectionMode="single"
-									disallowEmptySelection
-									selectedKeys={[destination]}
-									onSelectionChange={(keys) => {
-										if (
-											keys !== "all" &&
-											keys.size > 0 &&
-											!isExporting &&
-											!shareBusy
-										)
-											setDestination(keys.has("link") ? "link" : "local");
-									}}
-								>
-									<TagGroup.List className="flex gap-2">
-										<Tag
-											id="link"
-											isDisabled={isExporting || shareBusy}
-											className="h-24 flex-1 flex-col justify-center gap-2 rounded-xl border border-foreground/10"
-										>
-											<LinkSimple className="size-6" />
-											Link
-										</Tag>
-										<Tag
-											id="local"
-											isDisabled={isExporting || shareBusy}
-											className="h-24 flex-1 flex-col justify-center gap-2 rounded-xl border border-foreground/10"
-										>
-											<HardDrive className="size-6" />
-											Local
-										</Tag>
-									</TagGroup.List>
-								</TagGroup>
+								{BRAND.cloudShareEnabled && (
+									<TagGroup
+										aria-label="Publish destination"
+										selectionMode="single"
+										disallowEmptySelection
+										selectedKeys={[destination]}
+										onSelectionChange={(keys) => {
+											if (
+												keys !== "all" &&
+												keys.size > 0 &&
+												!isExporting &&
+												!shareBusy
+											)
+												setDestination(keys.has("link") ? "link" : "local");
+										}}
+									>
+										<TagGroup.List className="flex gap-2">
+											<Tag
+												id="link"
+												isDisabled={isExporting || shareBusy}
+												className="h-24 flex-1 flex-col justify-center gap-2 rounded-xl border border-foreground/10"
+											>
+												<LinkSimple className="size-6" />
+												Link
+											</Tag>
+											<Tag
+												id="local"
+												isDisabled={isExporting || shareBusy}
+												className="h-24 flex-1 flex-col justify-center gap-2 rounded-xl border border-foreground/10"
+											>
+												<HardDrive className="size-6" />
+												Local
+											</Tag>
+										</TagGroup.List>
+									</TagGroup>
+								)}
 							</div>
 							<div>
 								{destination === "link" ? (

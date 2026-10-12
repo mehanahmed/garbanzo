@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import { SettingsSections, SettingsCategory } from "../SettingsSections";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { SettingsRow } from "../SettingsRow";
@@ -104,7 +105,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 								);
 								setLiteMode(enabled);
 								toast.success(
-									"Ultra Lite mode updated. Restart Recordly to apply it everywhere.",
+									"Ultra Lite mode updated. Restart CamVerse to apply it everywhere.",
 								);
 							}}
 						/>
@@ -160,6 +161,18 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 					)}
 				</SettingsCategory>
 				<SettingsCategory category="advanced">
+					<SettingsRow
+						title={`About ${BRAND.name}`}
+						description={`${BRAND.name} is based on ${BRAND.basedOn} and is free software under the ${BRAND.license} license.`}
+					>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void window.electronAPI.openExternalUrl(BRAND.sourceUrl)}
+						>
+							Source code
+						</Button>
+					</SettingsRow>
 					{import.meta.env.DEV && (
 						<SettingsRow title="Preview update UI">
 							<Button

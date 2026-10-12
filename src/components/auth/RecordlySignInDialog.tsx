@@ -138,7 +138,7 @@ export function RecordlySignInDialog({
 		void run("link", async () => {
 			await sendSignInLink(email.trim());
 			setMessage(
-				"Check your inbox to verify your email and continue to Recordly. Open the link on this computer with Recordly running.",
+				"Check your inbox to verify your email and continue to CamVerse. Open the link on this computer with CamVerse running.",
 			);
 			setLinkSent(true);
 		});
@@ -161,7 +161,7 @@ export function RecordlySignInDialog({
 					<MotionDialog
 						layout={!onboarding}
 						transition={transition}
-						aria-label={onboarding ? "Welcome to Recordly" : undefined}
+						aria-label={onboarding ? "Welcome to CamVerse" : undefined}
 						data-onboarding-state={
 							onboarding ? (feature ? "feature" : "login") : undefined
 						}
@@ -206,15 +206,15 @@ export function RecordlySignInDialog({
 										<Modal.Header className="items-center gap-3 text-center">
 											<div
 												className="flex items-center gap-3"
-												aria-label="Recordly"
+												aria-label="CamVerse"
 											>
 												<img
-													src={`${import.meta.env.BASE_URL}app-icons/recordly-128.png`}
+													src={`${import.meta.env.BASE_URL}app-icons/camverse-128.png`}
 													alt=""
 													className="size-12 rounded-xl"
 												/>
 												<span className="text-3xl font-semibold tracking-tight">
-													Recordly
+													CamVerse
 												</span>
 											</div>
 											<Modal.Heading className="whitespace-nowrap text-[clamp(12px,5cqw,22px)] font-semibold leading-tight tracking-tight">
@@ -335,17 +335,17 @@ export function RecordlySignInDialog({
 													<FieldError />
 												</TextField>
 												{!demoEmail && (
-														<Button
-															type="submit"
-															variant="primary"
-															className="mt-3 h-12 w-full"
-															isDisabled={disabled || !configured}
-														>
-															{busy === "link"
-																? "Sending sign-in link…"
-																: "Email me a magic link"}
-														</Button>
-													)}
+													<Button
+														type="submit"
+														variant="primary"
+														className="mt-3 h-12 w-full"
+														isDisabled={disabled || !configured}
+													>
+														{busy === "link"
+															? "Sending sign-in link…"
+															: "Email me a magic link"}
+													</Button>
+												)}
 												<AnimatePresence initial={false}>
 													{expanded && demoEmail && (
 														<motion.div

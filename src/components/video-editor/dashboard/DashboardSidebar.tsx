@@ -1,4 +1,5 @@
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { BRAND } from "@/lib/brand";
 import { RecordNewButton } from "./RecordNewButton";
 import { SidebarCards } from "./SidebarCards";
 import { FolderRow } from "./FolderRow";
@@ -45,11 +46,11 @@ export function DashboardSidebar({
 			>
 				<div className="mb-4 flex h-10 items-center gap-2.5 px-3">
 					<img
-						src={`${import.meta.env.BASE_URL}app-icons/recordly-64.png`}
+						src={`${import.meta.env.BASE_URL}app-icons/camverse-64.png`}
 						alt=""
 						className="size-7 rounded-lg"
 					/>
-					<span className="text-[15px] font-semibold tracking-tight">Recordly</span>
+					<span className="text-[15px] font-semibold tracking-tight">{BRAND.name}</span>
 				</div>
 				<RecordNewButton busy={busy} run={run} className="mb-5 w-full" />
 				<nav className="space-y-1">
@@ -62,18 +63,20 @@ export function DashboardSidebar({
 						<House weight="fill" className="size-[18px]" />
 						Home
 					</Button>
-					<Button
-						variant="ghost"
-						className={navClass(section === "shared")}
-						aria-current={section === "shared" ? "page" : undefined}
-						onClick={() => setSection("shared")}
-					>
-						<Cloud
-							weight={section === "shared" ? "fill" : "regular"}
-							className="size-[18px]"
-						/>
-						Shared
-					</Button>
+					{BRAND.cloudShareEnabled && (
+						<Button
+							variant="ghost"
+							className={navClass(section === "shared")}
+							aria-current={section === "shared" ? "page" : undefined}
+							onClick={() => setSection("shared")}
+						>
+							<Cloud
+								weight={section === "shared" ? "fill" : "regular"}
+								className="size-[18px]"
+							/>
+							Shared
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						className={navClass(section === "raw")}
@@ -136,7 +139,9 @@ export function DashboardSidebar({
 				</div>
 				<div className="space-y-1 pt-6">
 					<SidebarCards />
-					<FeedbackDialog showLabel className={navClass(false)} onSignIn={onSignIn} />
+					{BRAND.accountsEnabled && (
+						<FeedbackDialog showLabel className={navClass(false)} onSignIn={onSignIn} />
+					)}
 					<Button
 						variant="ghost"
 						className={navClass(section === "settings")}
@@ -149,10 +154,12 @@ export function DashboardSidebar({
 						/>
 						Settings
 					</Button>
-					<Button variant="ghost" className={navClass(false)} onClick={onSignIn}>
-						<UserCircle weight="fill" className="size-[18px] shrink-0" />
-						<span className="truncate">{accountLabel || "Sign in"}</span>
-					</Button>
+					{BRAND.accountsEnabled && (
+						<Button variant="ghost" className={navClass(false)} onClick={onSignIn}>
+							<UserCircle weight="fill" className="size-[18px] shrink-0" />
+							<span className="truncate">{accountLabel || "Sign in"}</span>
+						</Button>
+					)}
 				</div>
 			</aside>
 		</>
