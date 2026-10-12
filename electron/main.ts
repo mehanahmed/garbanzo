@@ -1,5 +1,3 @@
-import { createSaveBeforeCloseController } from "./saveBeforeClose";
-import { clearRecordingTrashUndo } from "./ipc/recording/library";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -17,14 +15,12 @@ import {
 	systemPreferences,
 	Tray,
 } from "electron";
+import { LITE_RENDERER_HEAP_MB } from "../src/lib/liteMode";
 import { RECORDINGS_DIR } from "./appPaths";
 import { createAuthCallbackController } from "./authCallback";
 import { showCursor } from "./cursorHider";
-import { getGpuSwitches } from "./gpuSwitches";
-import { isLiteModeActiveInMain } from "./liteModeMain";
 import { registerDrawingIpc } from "./drawingWindows";
-import { registerTeleprompterIpc } from "./teleprompterWindow";
-import { LITE_RENDERER_HEAP_MB } from "../src/lib/liteMode";
+import { getGpuSwitches } from "./gpuSwitches";
 import {
 	cleanupAllExportStreams,
 	cleanupNativeVideoExportSessions,
@@ -32,10 +28,14 @@ import {
 	killWindowsCaptureProcess,
 	registerIpcHandlers,
 } from "./ipc/handlers";
+import { clearRecordingTrashUndo } from "./ipc/recording/library";
+import { isLiteModeActiveInMain } from "./liteModeMain";
 import { ensureMediaServer } from "./mediaServer";
 import { hardenWebContentsNavigation, shouldHardenWebContentsType } from "./navigationPolicy";
 import { shouldGrantDisplayCapture, shouldGrantMediaPermission } from "./permissionPolicy";
 import { ensurePackagedRendererServer, getPackagedRendererBaseUrl } from "./rendererServer";
+import { createSaveBeforeCloseController } from "./saveBeforeClose";
+import { registerTeleprompterIpc } from "./teleprompterWindow";
 import {
 	checkForAppUpdates,
 	deferUpdateReminder,
@@ -53,6 +53,7 @@ import {
 	skipAvailableUpdateVersion,
 } from "./updater";
 import {
+	beginHudCaptureProtection,
 	createEditorWindow,
 	createHudOverlayWindow,
 	createSourceSelectorWindow,
@@ -60,7 +61,6 @@ import {
 	getUpdateToastWindow,
 	hideUpdateToastWindow,
 	isHudOverlayMousePassthroughSupported,
-	beginHudCaptureProtection,
 	reassertHudOverlayMousePassthrough as reassertHudOverlayMouseState,
 	setHudOverlayRecordingActive,
 	showUpdateToastWindow,
@@ -103,6 +103,11 @@ function configureGpuAccelerationSwitches() {
 		app.commandLine.appendSwitch("use-gl", useGl);
 	}
 	const featuresToDisable = [...(disableFeatures ?? [])];
+	// Never let Chromium's WebRTC auto-gain change the Windows microphone
+	// volume. With it on, any open mic stream (level meter, browser mic
+	// fallback) could pull the system mic level down within seconds, so the
+	// voice faded to silence in the middle of a recording.
+	featuresToDisable.push("WebRtcAllowInputVolumeAdjustment");
 	if (LITE_MODE_AT_STARTUP) {
 		// Background features CamVerse does not need; each one costs memory on
 		// 2–4 GB machines.

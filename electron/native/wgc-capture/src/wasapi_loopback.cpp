@@ -28,6 +28,11 @@ constexpr uint32_t kBoundaryFadeInMs = 5;
 // loop still drains packets every few milliseconds.
 constexpr REFERENCE_TIME kSharedBufferDurationHns = 2000000; // 200 ms
 constexpr DWORD kPollIntervalMs = 5;
+// A microphone stream delivers a packet every ~10 ms. If none arrive for this
+// long, Windows has stalled the stream and it is reopened. (System audio is
+// exempt: loopback sends nothing while the PC is silent.)
+constexpr int64_t kMicStallTimeoutHns = 20000000; // 2 s
+constexpr DWORD kReopenRetryMs = 500;
 
 int64_t queryPerformanceCounterHns() {
     LARGE_INTEGER counter;
@@ -194,6 +199,10 @@ bool WasapiCapture::initializeLoopback(const std::string& outputPath) {
     hr = enumerator_->GetDefaultAudioEndpoint(eRender, eConsole, &device_);
     if (FAILED(hr)) return false;
 
+    dataFlow_ = eRender;
+    defaultRole_ = eConsole;
+    followDefaultDevice_ = true;
+    rememberDeviceId();
     return initializeCommon();
 }
 
@@ -212,13 +221,20 @@ bool WasapiCapture::initializeMic(
     DeviceRole labelRole = DeviceRole::None;
     const std::wstring plainName = stripRolePrefix(utf8ToWide(deviceName), &labelRole);
 
+    dataFlow_ = eCapture;
+    defaultRole_ = eConsole;
+    followDefaultDevice_ = false;
+
     // Chromium's special device ids map to the Windows default endpoints.
     if (deviceId == "communications") {
         hr = enumerator_->GetDefaultAudioEndpoint(eCapture, eCommunications, &device_);
         if (FAILED(hr)) device_ = nullptr;
+        defaultRole_ = eCommunications;
+        followDefaultDevice_ = device_ != nullptr;
     } else if (deviceId == "default") {
         hr = enumerator_->GetDefaultAudioEndpoint(eCapture, eConsole, &device_);
         if (FAILED(hr)) device_ = nullptr;
+        followDefaultDevice_ = device_ != nullptr;
     }
 
     if (!device_ && !deviceId.empty() && deviceId != "default" && deviceId != "communications") {
@@ -230,11 +246,10 @@ bool WasapiCapture::initializeMic(
         device_ = findCaptureDeviceByName(plainName);
     }
     if (!device_ && labelRole != DeviceRole::None) {
-        hr = enumerator_->GetDefaultAudioEndpoint(
-            eCapture,
-            labelRole == DeviceRole::Communications ? eCommunications : eConsole,
-            &device_);
+        defaultRole_ = labelRole == DeviceRole::Communications ? eCommunications : eConsole;
+        hr = enumerator_->GetDefaultAudioEndpoint(eCapture, defaultRole_, &device_);
         if (FAILED(hr)) device_ = nullptr;
+        followDefaultDevice_ = device_ != nullptr;
     }
     if (!device_) {
         const bool wantedSpecificDevice =
@@ -246,12 +261,115 @@ bool WasapiCapture::initializeMic(
         }
         hr = enumerator_->GetDefaultAudioEndpoint(eCapture, eConsole, &device_);
         if (FAILED(hr)) return false;
+        defaultRole_ = eConsole;
+        followDefaultDevice_ = true;
     }
 
     const std::wstring openedName = getDeviceFriendlyName(device_);
     std::wcerr << L"Microphone: " << openedName << std::endl;
+    rememberDeviceId();
 
     return initializeCommon();
+}
+
+void WasapiCapture::rememberDeviceId() {
+    deviceIdString_.clear();
+    if (!device_) return;
+    LPWSTR id = nullptr;
+    if (SUCCEEDED(device_->GetId(&id)) && id) {
+        deviceIdString_ = id;
+        CoTaskMemFree(id);
+    }
+}
+
+bool WasapiCapture::reopenStream() {
+    std::lock_guard<std::mutex> lock(clientMutex_);
+
+    if (captureClient_) {
+        captureClient_->Release();
+        captureClient_ = nullptr;
+    }
+    if (audioClient_) {
+        audioClient_->Stop();
+        audioClient_->Release();
+        audioClient_ = nullptr;
+    }
+
+    IMMDevice* device = nullptr;
+    if (followDefaultDevice_) {
+        if (FAILED(enumerator_->GetDefaultAudioEndpoint(dataFlow_, defaultRole_, &device))) {
+            device = nullptr;
+        }
+    }
+    if (!device && !deviceIdString_.empty()) {
+        if (FAILED(enumerator_->GetDevice(deviceIdString_.c_str(), &device))) {
+            device = nullptr;
+        }
+    }
+    if (!device) {
+        // The chosen device is gone; keep recording from the Windows default.
+        if (FAILED(enumerator_->GetDefaultAudioEndpoint(dataFlow_, defaultRole_, &device))) {
+            return false;
+        }
+    }
+
+    // Open a fresh client in the file's format. If the device's own format
+    // changed, Windows converts (AUTOCONVERTPCM) so the WAV stays consistent.
+    auto openClient = [&](DWORD extraFlags, IAudioClient** out) -> HRESULT {
+        IAudioClient* client = nullptr;
+        HRESULT hr = device->Activate(
+            IID_IAudioClient_, CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&client));
+        if (FAILED(hr)) return hr;
+        hr = client->Initialize(
+            AUDCLNT_SHAREMODE_SHARED,
+            streamFlags_ | extraFlags,
+            kSharedBufferDurationHns, 0, mixFormat_, nullptr);
+        if (FAILED(hr)) {
+            client->Release();
+            return hr;
+        }
+        *out = client;
+        return S_OK;
+    };
+
+    IAudioClient* client = nullptr;
+    HRESULT hr = openClient(0, &client);
+    if (FAILED(hr)) {
+        hr = openClient(
+            AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+            &client);
+    }
+    if (FAILED(hr)) {
+        std::cerr << "WASAPI: reopen Initialize failed hr=0x" << std::hex << hr << std::dec << std::endl;
+        device->Release();
+        return false;
+    }
+
+    IAudioCaptureClient* capture = nullptr;
+    hr = client->GetService(IID_IAudioCaptureClient_, reinterpret_cast<void**>(&capture));
+    if (FAILED(hr)) {
+        client->Release();
+        device->Release();
+        return false;
+    }
+    client->GetBufferSize(&bufferFrameCount_);
+    if (!paused_) {
+        hr = client->Start();
+        if (FAILED(hr)) {
+            capture->Release();
+            client->Release();
+            device->Release();
+            return false;
+        }
+    }
+
+    if (device_) device_->Release();
+    device_ = device;
+    audioClient_ = client;
+    captureClient_ = capture;
+    rememberDeviceId();
+    fadeInFramesRemaining_ = boundaryFadeInFrameCount();
+    return true;
 }
 
 bool WasapiCapture::initializeCommon() {
@@ -305,6 +423,8 @@ bool WasapiCapture::start() {
     compactedSilentDiscontinuityFrames_ = 0;
     fadeInFramesRemaining_ = 0;
     bytesOnDisk_ = 0;
+    streamRestartCount_ = 0;
+    silentPacketFrames_ = 0;
     writeWavHeader(outputFile_, 0);
 
     HRESULT hr = audioClient_->Start();
@@ -331,6 +451,7 @@ bool WasapiCapture::pause() {
     if (!capturing_ || paused_) return true;
     pauseStartQpcHns_ = queryPerformanceCounterHns();
     paused_ = true;
+    std::lock_guard<std::mutex> lock(clientMutex_);
     return audioClient_ ? SUCCEEDED(audioClient_->Stop()) : false;
 }
 
@@ -338,8 +459,16 @@ bool WasapiCapture::resume() {
     if (!capturing_ || !paused_) return true;
     const int64_t resumedQpcHns = queryPerformanceCounterHns();
     const int64_t pauseStartQpcHns = pauseStartQpcHns_.load();
-    HRESULT hr = audioClient_ ? audioClient_->Start() : E_FAIL;
-    if (FAILED(hr)) return false;
+    HRESULT hr = E_FAIL;
+    {
+        std::lock_guard<std::mutex> lock(clientMutex_);
+        hr = audioClient_ ? audioClient_->Start() : E_FAIL;
+    }
+    // If the stream died while paused, the capture loop reopens it; resuming
+    // must still succeed so the recording continues.
+    if (FAILED(hr) && hr != AUDCLNT_E_DEVICE_INVALIDATED && hr != AUDCLNT_E_NOT_INITIALIZED) {
+        return false;
+    }
     if (pauseStartQpcHns > 0 && resumedQpcHns > pauseStartQpcHns) {
         accumulatedPausedQpcHns_.fetch_add(resumedQpcHns - pauseStartQpcHns);
     }
@@ -353,7 +482,10 @@ void WasapiCapture::stop() {
     if (!capturing_) return;
     capturing_ = false;
     if (thread_.joinable()) thread_.join();
-    if (audioClient_) audioClient_->Stop();
+    {
+        std::lock_guard<std::mutex> lock(clientMutex_);
+        if (audioClient_) audioClient_->Stop();
+    }
 
     {
         std::lock_guard<std::mutex> lock(writeMutex_);
@@ -542,21 +674,64 @@ void WasapiCapture::captureThread() {
 
     const DWORD sleepMs = kPollIntervalMs;
 
+    // Last time a packet arrived (QPC, 100 ns); 0 = not measuring (paused).
+    int64_t lastPacketHns = 0;
+    bool reportedMutedMic = false;
+    int64_t silentSinceHns = 0;
+
+    // Reopen the stream after a failure, retrying until it works or the
+    // recording stops. The missing time is filled with silence by the gap
+    // logic below, so the audio stays in sync with the video.
+    auto recoverStream = [&](HRESULT failure, const char* what) -> bool {
+        std::cerr << "WASAPI: " << what << " hr=0x" << std::hex << failure << std::dec
+                  << "; reopening the audio device" << std::endl;
+        while (capturing_) {
+            if (reopenStream()) {
+                streamRestartCount_.fetch_add(1);
+                lastPacketHns = queryPerformanceCounterHns();
+                std::cerr << "WASAPI: audio stream reopened" << std::endl;
+                return true;
+            }
+            Sleep(kReopenRetryMs);
+        }
+        return false;
+    };
+
     while (capturing_) {
         if (paused_) {
+            lastPacketHns = 0;
             Sleep(10);
             continue;
         }
 
         Sleep(sleepMs);
 
-        UINT32 packetLength = 0;
-        HRESULT hr = captureClient_->GetNextPacketSize(&packetLength);
-        if (FAILED(hr)) {
-            std::cerr << "WASAPI: GetNextPacketSize failed hr=0x" << std::hex << hr << std::dec << std::endl;
-            break;
+        const int64_t nowHns = queryPerformanceCounterHns();
+        if (lastPacketHns == 0) {
+            lastPacketHns = nowHns;
         }
 
+        UINT32 packetLength = 0;
+        HRESULT hr = captureClient_ ? captureClient_->GetNextPacketSize(&packetLength) : E_POINTER;
+        if (FAILED(hr)) {
+            if (!recoverStream(hr, "GetNextPacketSize failed")) break;
+            continue;
+        }
+
+        if (packetLength == 0) {
+            if (
+                dataFlow_ == eCapture &&
+                nowHns > 0 &&
+                nowHns - lastPacketHns > kMicStallTimeoutHns
+            ) {
+                if (!recoverStream(AUDCLNT_E_SERVICE_NOT_RUNNING, "microphone stopped sending audio")) break;
+            }
+            continue;
+        }
+        lastPacketHns = nowHns;
+
+        bool streamFailed = false;
+        HRESULT failedHr = S_OK;
         while (packetLength > 0) {
             BYTE* data = nullptr;
             UINT32 numFrames = 0;
@@ -571,7 +746,8 @@ void WasapiCapture::captureThread() {
                 &devicePosition,
                 &qpcPosition);
             if (FAILED(hr)) {
-                std::cerr << "WASAPI: GetBuffer failed hr=0x" << std::hex << hr << std::dec << std::endl;
+                streamFailed = true;
+                failedHr = hr;
                 break;
             }
 
@@ -631,6 +807,21 @@ void WasapiCapture::captureThread() {
 
             UINT32 totalSamples = numFrames * channels;
             const bool isSilentPacket = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0;
+            if (isSilentPacket) {
+                silentPacketFrames_.fetch_add(numFrames);
+                if (silentSinceHns == 0) silentSinceHns = nowHns;
+                if (
+                    dataFlow_ == eCapture && !reportedMutedMic &&
+                    nowHns - silentSinceHns > 30000000
+                ) {
+                    reportedMutedMic = true;
+                    std::cerr << "WASAPI: Windows reports the microphone as muted "
+                                 "(check the mic's mute switch or Windows privacy settings)"
+                              << std::endl;
+                }
+            } else {
+                silentSinceHns = 0;
+            }
             const uint32_t silentCompactThresholdFrames =
                 (mixFormat_->nSamplesPerSec * kSilentDiscontinuityCompactThresholdMs) / 1000;
             if (
@@ -645,7 +836,8 @@ void WasapiCapture::captureThread() {
                 captureClient_->ReleaseBuffer(numFrames);
                 hr = captureClient_->GetNextPacketSize(&packetLength);
                 if (FAILED(hr)) {
-                    std::cerr << "WASAPI: GetNextPacketSize failed hr=0x" << std::hex << hr << std::dec << std::endl;
+                    streamFailed = true;
+                    failedHr = hr;
                     break;
                 }
                 continue;
@@ -712,9 +904,14 @@ void WasapiCapture::captureThread() {
 
             hr = captureClient_->GetNextPacketSize(&packetLength);
             if (FAILED(hr)) {
-                std::cerr << "WASAPI: GetNextPacketSize failed hr=0x" << std::hex << hr << std::dec << std::endl;
+                streamFailed = true;
+                failedHr = hr;
                 break;
             }
+        }
+
+        if (streamFailed && !recoverStream(failedHr, "reading audio failed")) {
+            break;
         }
     }
 

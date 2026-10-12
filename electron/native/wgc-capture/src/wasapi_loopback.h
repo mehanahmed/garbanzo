@@ -38,9 +38,16 @@ public:
     uint64_t compactedDiscontinuityFrames() const { return compactedDiscontinuityFrames_.load(); }
     uint32_t compactedSilentDiscontinuityCount() const { return compactedSilentDiscontinuityCount_.load(); }
     uint64_t compactedSilentDiscontinuityFrames() const { return compactedSilentDiscontinuityFrames_.load(); }
+    uint32_t streamRestartCount() const { return streamRestartCount_.load(); }
+    uint64_t silentPacketFrames() const { return silentPacketFrames_.load(); }
 
 private:
     bool initializeCommon();
+    // Reopens the audio stream after Windows invalidated or stalled it (device
+    // unplugged/re-plugged, default device changed, driver reset, another app
+    // reconfiguring the device). Keeps the file's sample format.
+    bool reopenStream();
+    void rememberDeviceId();
     void captureThread();
     void writerThread();
     void enqueueWrite(std::vector<int16_t>&& samples);
@@ -72,6 +79,17 @@ private:
     IAudioCaptureClient* captureClient_ = nullptr;
     WAVEFORMATEX* mixFormat_ = nullptr;
     DWORD streamFlags_ = 0;
+    EDataFlow dataFlow_ = eCapture;
+    ERole defaultRole_ = eConsole;
+    // True when the user picked "Default"/"Communications" (or for system
+    // audio): after a failure, reopen whatever device Windows now uses.
+    bool followDefaultDevice_ = false;
+    std::wstring deviceIdString_;
+    // Guards audioClient_ between the capture thread (reopen) and
+    // pause/resume/stop on the main thread.
+    std::mutex clientMutex_;
+    std::atomic<uint32_t> streamRestartCount_{0};
+    std::atomic<uint64_t> silentPacketFrames_{0};
 
     UINT32 bufferFrameCount_ = 0;
     std::atomic<int64_t> firstPacketQpcHns_{-1};

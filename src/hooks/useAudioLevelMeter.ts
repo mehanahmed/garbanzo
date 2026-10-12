@@ -40,8 +40,15 @@ export function useAudioLevelMeter(options: AudioLevelMeterOptions) {
 
 		const startMonitoring = async () => {
 			try {
+				// Raw input only: the meter must never run auto-gain, which can
+				// change the Windows mic volume under an ongoing recording.
 				const constraints: MediaStreamConstraints = {
-					audio: options.deviceId ? { deviceId: { exact: options.deviceId } } : true,
+					audio: {
+						...(options.deviceId ? { deviceId: { exact: options.deviceId } } : {}),
+						autoGainControl: false,
+						echoCancellation: false,
+						noiseSuppression: false,
+					},
 					video: false,
 				};
 

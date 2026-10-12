@@ -243,6 +243,8 @@ static void writeCompanionAudioTimingMetadata(
     metadataFile << ",\"compactedDiscontinuityFrames\":" << capture.compactedDiscontinuityFrames();
     metadataFile << ",\"compactedSilentDiscontinuityCount\":" << capture.compactedSilentDiscontinuityCount();
     metadataFile << ",\"compactedSilentDiscontinuityFrames\":" << capture.compactedSilentDiscontinuityFrames();
+    metadataFile << ",\"streamRestartCount\":" << capture.streamRestartCount();
+    metadataFile << ",\"silentPacketFrames\":" << capture.silentPacketFrames();
     const uint32_t discontinuityCount = capture.dataDiscontinuityCount();
     if (discontinuityCount > 0) {
         metadataFile << ",\"dataDiscontinuityCount\":" << discontinuityCount;

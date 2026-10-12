@@ -42,7 +42,13 @@ export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?
 
 				if (needsLabelPermission && !hasRequestedMicrophoneLabels) {
 					hasRequestedMicrophoneLabels = true;
-					permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+					permissionStream = await navigator.mediaDevices.getUserMedia({
+						audio: {
+							autoGainControl: false,
+							echoCancellation: false,
+							noiseSuppression: false,
+						},
+					});
 					allDevices = await navigator.mediaDevices.enumerateDevices();
 					audioInputs = allDevices
 						.filter((device) => device.kind === "audioinput")
