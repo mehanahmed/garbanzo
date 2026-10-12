@@ -17,7 +17,7 @@ Screen recording and editing for polished demo, tutorial and business videos, tu
 - Clear microphone capture, live level on the selected mic, and an **Accurate** cursor mode that follows the real mouse path and speed
 - Everything from Recordly: auto-zoom, cursor effects, backgrounds, webcam bubble, timeline editing, captions
 
-Recordings and exports stay on your PC. CamVerse has no account or cloud upload.
+Recordings and exports stay on your PC unless you publish a share link. Sign-in, Feedback and share links run on CamVerse's own Supabase and Cloudflare services; set them up with [CAMVERSE_SERVER_SETUP.md](CAMVERSE_SERVER_SETUP.md). Builds without them simply hide those features.
 
 ## Building
 

@@ -1,0 +1,53 @@
+{
+  // CamVerse share server (multi-user "hosted" mode).
+  //
+  // Used by .github/workflows/deploy-services.yml. The workflow creates the D1
+  // database and R2 bucket if needed and replaces the two __PLACEHOLDERS__
+  // below before running `wrangler deploy`. Do not commit real IDs here.
+  //
+  // Every verified CamVerse account can share: up to 5 recordings, 1 GB each,
+  // kept for 14 days (limits live in src/library.js / src/uploads.js).
+  "name": "camverse-share",
+  "main": "src/index.js",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["service_binding_extra_handlers"],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./web/dist",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "camverse-share-db",
+      "database_id": "__D1_DATABASE_ID__"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "VIDEOS_BUCKET",
+      "bucket_name": "camverse-videos"
+    }
+  ],
+  "ratelimits": [
+    {
+      // Per visitor IP: viewing, streaming and uploads.
+      "name": "REQUEST_RATE_LIMIT",
+      "namespace_id": "4101",
+      "simple": { "limit": 600, "period": 60 }
+    },
+    {
+      // Per signed-in account: upload parts and library actions.
+      "name": "ACCOUNT_RATE_LIMIT",
+      "namespace_id": "4102",
+      "simple": { "limit": 300, "period": 60 }
+    }
+  ],
+  "vars": {
+    "HOSTED_MODE": "true",
+    "SUPABASE_URL": "__SUPABASE_URL__"
+  },
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  }
+}

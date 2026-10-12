@@ -1,0 +1,190 @@
+name: Deploy CamVerse services
+
+# Sets up CamVerse's own online services from repository secrets, then
+# (optionally) builds and releases the desktop app with them switched on:
+#   - Supabase: sign-in, Feedback and export error reports
+#   - Cloudflare Worker + R2 + D1: share links and the Shared library
+# Step-by-step setup: CAMVERSE_SERVER_SETUP.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_after_deploy:
+        description: Build and release the desktop app afterwards
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: deploy-camverse-services
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY_OVERRIDE: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AUTH_SOCIAL_PROVIDERS: ${{ vars.CAMVERSE_AUTH_SOCIAL_PROVIDERS }}
+      WORKER_DIR: services/recordly-share/worker
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check settings
+        run: |
+          missing=()
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing+=("secret SUPABASE_ACCESS_TOKEN")
+          [ -n "$SUPABASE_DB_PASSWORD" ] || missing+=("secret SUPABASE_DB_PASSWORD")
+          [ -n "$SUPABASE_PROJECT_REF" ] || missing+=("variable SUPABASE_PROJECT_REF")
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing+=("secret CLOUDFLARE_API_TOKEN")
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing+=("secret CLOUDFLARE_ACCOUNT_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository settings: ${missing[*]}. See CAMVERSE_SERVER_SETUP.md."
+            exit 1
+          fi
+          if ! [[ "$SUPABASE_PROJECT_REF" =~ ^[a-z0-9]{20}$ ]]; then
+            echo "::error::SUPABASE_PROJECT_REF should be the 20-letter project id (from the project URL), not the full URL."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Get Supabase public key
+        run: |
+          set -euo pipefail
+          SUPABASE_URL="https://${SUPABASE_PROJECT_REF}.supabase.co"
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY_OVERRIDE" ]; then
+            KEY="$SUPABASE_PUBLISHABLE_KEY_OVERRIDE"
+          else
+            KEYS=$(curl -fsS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/api-keys")
+            # Prefer the new publishable key; fall back to the legacy anon key.
+            KEY=$(echo "$KEYS" | jq -r '[.[] | select(.type=="publishable")][0].api_key // empty')
+            [ -n "$KEY" ] || KEY=$(echo "$KEYS" | jq -r '[.[] | select(.name=="anon")][0].api_key // empty')
+          fi
+          if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
+            echo "::error::Could not read the Supabase publishable key. Set the repository variable SUPABASE_PUBLISHABLE_KEY."
+            exit 1
+          fi
+          case "$KEY" in sb_secret_*|*service_role*) echo "::error::That is a secret key. Use the publishable (public) key."; exit 1;; esac
+          echo "::add-mask::${SUPABASE_ACCESS_TOKEN}"
+          echo "SUPABASE_URL=${SUPABASE_URL}" >> "$GITHUB_ENV"
+          echo "SUPABASE_PUBLISHABLE_KEY=${KEY}" >> "$GITHUB_ENV"
+
+      - name: Supabase database and functions
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --workdir services
+          supabase db push --workdir services --include-all
+          supabase functions deploy submit-feedback --project-ref "$SUPABASE_PROJECT_REF" --workdir services --use-api
+          supabase functions deploy submit-export-error --project-ref "$SUPABASE_PROJECT_REF" --workdir services --use-api
+
+      - name: Build share pages
+        working-directory: ${{ env.WORKER_DIR }}
+        run: |
+          npm ci
+          npm --prefix web ci
+          npm --prefix web run build
+
+      - name: Create storage (D1 database and R2 bucket)
+        working-directory: ${{ env.WORKER_DIR }}
+        run: |
+          set -euo pipefail
+          npx wrangler d1 create camverse-share-db >/dev/null 2>&1 || true
+          D1_ID=$(npx wrangler d1 list --json | jq -r '.[] | select(.name=="camverse-share-db") | .uuid')
+          if [ -z "$D1_ID" ]; then echo "::error::Could not create or find the D1 database. Check the Cloudflare API token permissions."; exit 1; fi
+          if ! out=$(npx wrangler r2 bucket create camverse-videos 2>&1); then
+            if ! echo "$out" | grep -qi "already exists"; then
+              echo "$out"
+              echo "::error::Could not create the R2 bucket. Enable R2 in the Cloudflare dashboard (it asks for a payment method) and check the token permissions."
+              exit 1
+            fi
+          fi
+          sed -e "s/__D1_DATABASE_ID__/${D1_ID}/" -e "s#__SUPABASE_URL__#${SUPABASE_URL}#" \
+            wrangler.camverse.jsonc > wrangler.deploy.jsonc
+
+      - name: Deploy share server
+        working-directory: ${{ env.WORKER_DIR }}
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.deploy.jsonc | tee deploy.log
+          SHARE_URL=$(grep -oE 'https://camverse-share\.[a-z0-9-]+\.workers\.dev' deploy.log | head -1)
+          if [ -z "$SHARE_URL" ]; then
+            echo "::error::Deployed, but no workers.dev address was printed. Open Cloudflare > Workers once to choose a workers.dev subdomain, then run this again."
+            exit 1
+          fi
+          printf '%s' "$SUPABASE_PUBLISHABLE_KEY" | npx wrangler secret put SUPABASE_PUBLISHABLE_KEY --config wrangler.deploy.jsonc
+          if ! npx wrangler secret list --config wrangler.deploy.jsonc | grep -q '"API_SECRET"'; then
+            openssl rand -hex 32 | tr -d '\n' | npx wrangler secret put API_SECRET --config wrangler.deploy.jsonc
+          fi
+          curl -fsS "${SHARE_URL}/api/health" -o /dev/null -w "Share server health check: HTTP %{http_code}\n" || true
+          echo "SHARE_URL=${SHARE_URL}" >> "$GITHUB_ENV"
+
+      - name: Supabase sign-in settings
+        run: |
+          set -euo pipefail
+          BODY=$(jq -n \
+            --arg site "$SHARE_URL" \
+            --arg allow "camverse://auth/callback,camverse://**" \
+            --rawfile confirm services/supabase/templates/confirm-sign-up.html \
+            --rawfile magic services/supabase/templates/magic-link.html \
+            '{
+              site_url: $site,
+              uri_allow_list: $allow,
+              mailer_autoconfirm: false,
+              mailer_subjects_confirmation: "Confirm your CamVerse account",
+              mailer_templates_confirmation_content: $confirm,
+              mailer_subjects_magic_link: "Your CamVerse sign-in link",
+              mailer_templates_magic_link_content: $magic
+            }')
+          curl -fsS -X PATCH \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth" \
+            -d "$BODY" -o /dev/null -w "Supabase auth settings: HTTP %{http_code}\n"
+
+      - name: Save server addresses for app builds
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg url "$SUPABASE_URL" \
+            --arg key "$SUPABASE_PUBLISHABLE_KEY" \
+            --arg share "${SHARE_URL}/api/upload" \
+            --arg social "${AUTH_SOCIAL_PROVIDERS}" \
+            '{supabaseUrl: $url, supabasePublishableKey: $key, shareEndpoint: $share, socialProviders: $social}' \
+            > services/camverse-endpoints.json
+          cat services/camverse-endpoints.json
+          if ! git diff --quiet -- services/camverse-endpoints.json || ! git ls-files --error-unmatch services/camverse-endpoints.json >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add services/camverse-endpoints.json
+            git commit -m "Update CamVerse server addresses"
+            git push
+          fi
+          {
+            echo "### CamVerse services are live"
+            echo "- Share server: ${SHARE_URL}"
+            echo "- Supabase: ${SUPABASE_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and release the desktop app
+        if: ${{ inputs.build_after_deploy }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --ref "${GITHUB_REF_NAME}" -f publish_release=true

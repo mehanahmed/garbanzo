@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import { GithubLogo } from "@phosphor-icons/react";
 import { OnboardingFeature } from "./OnboardingFeature";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -249,69 +250,83 @@ export function RecordlySignInDialog({
 										</Button>
 									) : (
 										<>
-											<motion.div
-												{...reveal}
-												transition={{
-													...transition,
-													delay: reduceMotion ? 0 : 0.05,
-												}}
-												className="grid grid-cols-3 gap-2"
-											>
-												{(
-													[
-														{
-															provider: "google",
-															label: "Google",
-															image: "google-logo.png",
-														},
-														{
-															provider: "azure",
-															label: "Microsoft",
-															image: "microsoft-logo.svg",
-														},
-														{
-															provider: "github",
-															label: "GitHub",
-															image: null,
-														},
-													] as const
-												).map(({ provider, label, image }) => (
-													<Button
-														key={provider}
-														variant="secondary"
-														aria-label={`Continue with ${label}`}
-														className="h-11 w-full min-w-0 gap-2 rounded-xl px-2 text-xs font-medium text-foreground @[360px]:text-sm"
-														isDisabled={disabled || !configured}
-														onPress={() =>
-															void run(provider, () =>
-																signInWithSocial(provider),
-															)
-														}
-													>
-														{image ? (
-															<img
-																src={`${import.meta.env.BASE_URL}auth/${image}`}
-																alt=""
-																className="size-4 shrink-0"
-															/>
-														) : (
-															<GithubLogo
-																aria-hidden="true"
-																weight="fill"
-																className="size-4 shrink-0"
-															/>
-														)}
-														{label}
-													</Button>
-												))}
-											</motion.div>
-											<div className="flex items-center gap-4">
-												<Separator className="flex-1" />
-												<span className="text-xs text-muted">
-													or continue with email
-												</span>
-												<Separator className="flex-1" />
-											</div>
+											{/* Only providers set up in CamVerse's Supabase project are shown. */}
+											{BRAND.socialProviders.length > 0 && (
+												<motion.div
+													{...reveal}
+													transition={{
+														...transition,
+														delay: reduceMotion ? 0 : 0.05,
+													}}
+													className="grid gap-2"
+													style={{
+														gridTemplateColumns: `repeat(${BRAND.socialProviders.length}, minmax(0, 1fr))`,
+													}}
+												>
+													{(
+														[
+															{
+																provider: "google",
+																label: "Google",
+																image: "google-logo.png",
+															},
+															{
+																provider: "azure",
+																label: "Microsoft",
+																image: "microsoft-logo.svg",
+															},
+															{
+																provider: "github",
+																label: "GitHub",
+																image: null,
+															},
+														] as const
+													)
+														.filter(({ provider }) =>
+															BRAND.socialProviders.includes(
+																provider,
+															),
+														)
+														.map(({ provider, label, image }) => (
+															<Button
+																key={provider}
+																variant="secondary"
+																aria-label={`Continue with ${label}`}
+																className="h-11 w-full min-w-0 gap-2 rounded-xl px-2 text-xs font-medium text-foreground @[360px]:text-sm"
+																isDisabled={disabled || !configured}
+																onPress={() =>
+																	void run(provider, () =>
+																		signInWithSocial(provider),
+																	)
+																}
+															>
+																{image ? (
+																	<img
+																		src={`${import.meta.env.BASE_URL}auth/${image}`}
+																		alt=""
+																		className="size-4 shrink-0"
+																	/>
+																) : (
+																	<GithubLogo
+																		aria-hidden="true"
+																		weight="fill"
+																		className="size-4 shrink-0"
+																	/>
+																)}
+																{label}
+															</Button>
+														))}
+												</motion.div>
+											)}
+											{BRAND.socialProviders.length > 0 && (
+												<div className="flex items-center gap-4">
+													<Separator className="flex-1" />
+													<span className="text-xs text-muted">
+														or continue with email
+													</span>
+													<Separator className="flex-1" />
+												</div>
+											)}
 											<Form className="flex flex-col" onSubmit={submitEmail}>
 												<TextField
 													name="email"

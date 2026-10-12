@@ -7,11 +7,23 @@ export type CloudShareTicket = {
 	finalizeUrl?: string;
 };
 
-const TRUSTED_SHARE_ORIGINS = new Set([
-	"https://videos.recordly.dev",
-	"http://localhost:8787",
-	"http://127.0.0.1:8787",
-]);
+function configuredShareOrigin(): string | null {
+	// Literal import.meta.env.VITE_* so Vite fills it in at build time.
+	const configured: string | undefined = import.meta.env.VITE_CLOUD_SHARE_ENDPOINT;
+	try {
+		return configured?.trim() ? new URL(configured.trim()).origin : null;
+	} catch {
+		return null;
+	}
+}
+
+// Uploads only ever go to CamVerse's own share server (set at build time) or a
+// local development server.
+const TRUSTED_SHARE_ORIGINS = new Set(
+	[configuredShareOrigin(), "http://localhost:8787", "http://127.0.0.1:8787"].filter(
+		(origin): origin is string => Boolean(origin),
+	),
+);
 
 function parseUrl(value: unknown, label: string): URL {
 	if (typeof value !== "string") throw new Error(`${label} is missing.`);

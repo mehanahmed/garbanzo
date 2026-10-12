@@ -226,11 +226,11 @@ export async function handleOGPage(request, env, shareCode) {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Protected video — Recordly</title>
+<title>Protected video — CamVerse</title>
 <meta property="og:title" content="Protected video">
 <meta property="og:type" content="video.other">
 <meta property="og:url" content="${baseUrl}/s/${shareCode}">
-<meta property="og:site_name" content="Recordly">
+<meta property="og:site_name" content="CamVerse">
 <meta property="og:description" content="This recording is password protected.">
 </head>
 <body><p>This recording is password protected.</p></body>
@@ -246,7 +246,7 @@ export async function handleOGPage(request, env, shareCode) {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${escapeHTML(video.title)} — Recordly</title>
+<title>${escapeHTML(video.title)} — CamVerse</title>
 <meta property="og:title" content="${escapeHTML(video.title)}">
 <meta property="og:type" content="video.other">
 <meta property="og:url" content="${baseUrl}/s/${shareCode}">
@@ -259,7 +259,7 @@ export async function handleOGPage(request, env, shareCode) {
 <meta property="og:image:secure_url" content="${baseUrl}/og/${shareCode}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:site_name" content="Recordly">
+<meta property="og:site_name" content="CamVerse">
 <meta property="og:description" content="${desc}">
 <meta name="twitter:card" content="player">
 <meta name="twitter:title" content="${escapeHTML(video.title)}">

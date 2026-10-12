@@ -5,13 +5,13 @@ import type { ReactNode } from "react";
 export function Brand() {
 	return (
 		<Link
-			href="https://github.com/webadderallorg/Recordly"
+			href="https://github.com/princeshiamofficial/garbanzo"
 			target="_blank"
 			rel="noopener noreferrer"
 			className="brand"
 		>
 			<img src="/icon-64.png" alt="" width="28" height="28" />
-			<span>Recordly</span>
+			<span>CamVerse</span>
 		</Link>
 	);
 }

@@ -1,12 +1,18 @@
-import { describe, expect, it } from "vitest";
-import {
-	normalizeCloudEndpoint,
-	parseCloudShareTicket,
-	parseCloudRecordingList,
-} from "../cloudShareContract";
+import { describe, expect, it, vi } from "vitest";
+
+// The trusted share server comes from the build settings (CamVerse's own
+// Cloudflare deployment). Simulate a build configured for videos.recordly.dev
+// so the existing fixtures keep their URLs.
+vi.hoisted(() => {
+	process.env.VITE_CLOUD_SHARE_ENDPOINT = "https://videos.recordly.dev/api/upload";
+});
+
+const { normalizeCloudEndpoint, parseCloudShareTicket, parseCloudRecordingList } = await import(
+	"../cloudShareContract"
+);
 
 describe("cloud share contract", () => {
-	it("accepts only Recordly production and local development endpoints", () => {
+	it("accepts only the configured share server and local development endpoints", () => {
 		expect(normalizeCloudEndpoint("https://videos.recordly.dev/api/upload#ignored")).toBe(
 			"https://videos.recordly.dev/api/upload",
 		);

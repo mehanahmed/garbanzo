@@ -389,7 +389,7 @@ export async function handleRequest(request, env) {
 	}
 
 	if (path === "/") {
-		return new Response("Recordly Share", { status: 200 });
+		return new Response("CamVerse Share", { status: 200 });
 	}
 
 	// Fall through to static assets
