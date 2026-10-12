@@ -236,6 +236,24 @@ interface Window {
 		getTeleprompterPlatformInfo: () => Promise<{ captureExclusionSupported: boolean }>;
 		onTeleprompterRecordingState: (callback: (recording: boolean) => void) => () => void;
 		onTeleprompterVisibility: (callback: (open: boolean) => void) => () => void;
+		toggleDrawing: () => Promise<boolean>;
+		isDrawingOpen: () => Promise<boolean>;
+		getDrawingState: () => Promise<import("../src/lib/drawingTools").DrawingState>;
+		setDrawingTool: (tool: import("../src/lib/drawingTools").DrawingTool) => void;
+		setDrawingStyle: (style: {
+			color?: string;
+			size?: import("../src/lib/drawingTools").DrawingSize;
+		}) => void;
+		sendDrawingCommand: (command: "undo" | "clear") => void;
+		reportDrawing: (report: { shapeCount: number }) => void;
+		raiseDrawingChrome: () => void;
+		setDrawingToolbarHeight: (height: number) => void;
+		closeDrawing: () => void;
+		onDrawingState: (
+			callback: (state: import("../src/lib/drawingTools").DrawingState) => void,
+		) => () => void;
+		onDrawingCommand: (callback: (command: "undo" | "clear") => void) => () => void;
+		onDrawingVisibility: (callback: (open: boolean) => void) => () => void;
 		getHudOverlayMousePassthroughSupported: () => Promise<{
 			success: boolean;
 			supported: boolean;

@@ -204,6 +204,8 @@ import { DocumentTextIcon as DocumentTextLinear } from "@solar-icons/react/linea
 import { DocumentTextIcon as DocumentTextBold } from "@solar-icons/react/bold/document-text";
 import { FlipHorizontalIcon as FlipHorizontalLinear } from "@solar-icons/react/linear/flip-horizontal";
 import { FlipHorizontalIcon as FlipHorizontalBold } from "@solar-icons/react/bold/flip-horizontal";
+import { Pen2Icon as Pen2Linear } from "@solar-icons/react/linear/pen-2";
+import { Pen2Icon as Pen2Bold } from "@solar-icons/react/bold/pen-2";
 export const AlignCenterHorizontal = solar(AlignHorizontalCenterLinear, AlignHorizontalCenterBold);
 export const AlignLeft = solar(AlignLeftLinear, AlignLeftBold);
 export const AlignRight = solar(AlignRightLinear, AlignRightBold);
@@ -305,3 +307,4 @@ export { GoogleLogo, XLogo } from "@phosphor-icons/react";
 export const SoundwaveIcon = solar(SoundwaveLinear, SoundwaveBold);
 export const DocumentTextIcon = solar(DocumentTextLinear, DocumentTextBold);
 export const FlipHorizontalIcon = solar(FlipHorizontalLinear, FlipHorizontalBold);
+export const PenIcon = solar(Pen2Linear, Pen2Bold);

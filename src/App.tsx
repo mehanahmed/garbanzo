@@ -21,6 +21,8 @@ const UpdateToastWindow = lazy(() =>
 );
 const EditorWindow = lazy(() => import("./components/video-editor/EditorWindow"));
 const TeleprompterWindow = lazy(() => import("./components/teleprompter/TeleprompterWindow"));
+const DrawingOverlay = lazy(() => import("./components/drawing/DrawingOverlay"));
+const DrawingToolbar = lazy(() => import("./components/drawing/DrawingToolbar"));
 
 export default function App() {
 	const [windowType] = useState(
@@ -36,7 +38,9 @@ export default function App() {
 			windowType === "hud-overlay" ||
 			windowType === "source-selector" ||
 			windowType === "countdown" ||
-			windowType === "update-toast"
+			windowType === "update-toast" ||
+			windowType === "drawing-overlay" ||
+			windowType === "drawing-toolbar"
 		) {
 			document.body.style.background = "transparent";
 			document.documentElement.style.background = "transparent";
@@ -83,6 +87,12 @@ export default function App() {
 			break;
 		case "teleprompter":
 			content = <TeleprompterWindow />;
+			break;
+		case "drawing-overlay":
+			content = <DrawingOverlay />;
+			break;
+		case "drawing-toolbar":
+			content = <DrawingToolbar />;
 			break;
 		default:
 			content = (

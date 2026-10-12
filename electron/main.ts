@@ -22,6 +22,7 @@ import { createAuthCallbackController } from "./authCallback";
 import { showCursor } from "./cursorHider";
 import { getGpuSwitches } from "./gpuSwitches";
 import { isLiteModeActiveInMain } from "./liteModeMain";
+import { registerDrawingIpc } from "./drawingWindows";
 import { registerTeleprompterIpc } from "./teleprompterWindow";
 import { LITE_RENDERER_HEAP_MB } from "../src/lib/liteMode";
 import {
@@ -139,6 +140,7 @@ async function logSmokeExportGpuDiagnostics() {
 configureGpuAccelerationSwitches();
 configureLiteModeSwitches();
 registerTeleprompterIpc();
+registerDrawingIpc({ getHudWindow: () => getHudOverlayWindow() });
 
 async function ensureRecordingsDir() {
 	try {

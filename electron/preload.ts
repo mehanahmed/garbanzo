@@ -241,6 +241,52 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("teleprompter:recording-state", listener);
 		return () => ipcRenderer.removeListener("teleprompter:recording-state", listener);
 	},
+	toggleDrawing: () => {
+		return ipcRenderer.invoke("drawing:toggle") as Promise<boolean>;
+	},
+	isDrawingOpen: () => {
+		return ipcRenderer.invoke("drawing:is-open") as Promise<boolean>;
+	},
+	getDrawingState: () => {
+		return ipcRenderer.invoke("drawing:get-state");
+	},
+	setDrawingTool: (tool: string) => {
+		ipcRenderer.send("drawing:set-tool", tool);
+	},
+	setDrawingStyle: (style: { color?: string; size?: string }) => {
+		ipcRenderer.send("drawing:set-style", style);
+	},
+	sendDrawingCommand: (command: "undo" | "clear") => {
+		ipcRenderer.send("drawing:command", command);
+	},
+	reportDrawing: (report: { shapeCount: number }) => {
+		ipcRenderer.send("drawing:report", report);
+	},
+	raiseDrawingChrome: () => {
+		ipcRenderer.send("drawing:raise-chrome");
+	},
+	setDrawingToolbarHeight: (height: number) => {
+		ipcRenderer.send("drawing:toolbar-height", height);
+	},
+	closeDrawing: () => {
+		ipcRenderer.send("drawing:close");
+	},
+	onDrawingState: (callback: (state: unknown) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, state: unknown) => callback(state);
+		ipcRenderer.on("drawing:state", listener);
+		return () => ipcRenderer.removeListener("drawing:state", listener);
+	},
+	onDrawingCommand: (callback: (command: "undo" | "clear") => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, command: "undo" | "clear") =>
+			callback(command);
+		ipcRenderer.on("drawing:command", listener);
+		return () => ipcRenderer.removeListener("drawing:command", listener);
+	},
+	onDrawingVisibility: (callback: (open: boolean) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, open: boolean) => callback(open);
+		ipcRenderer.on("drawing:visibility", listener);
+		return () => ipcRenderer.removeListener("drawing:visibility", listener);
+	},
 	onTeleprompterVisibility: (callback: (open: boolean) => void) => {
 		const listener = (_event: Electron.IpcRendererEvent, open: boolean) => callback(open);
 		ipcRenderer.on("teleprompter:visibility", listener);

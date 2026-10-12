@@ -9,6 +9,7 @@ import {
 	MonitorIcon,
 	TimerIcon,
 	DocumentTextIcon,
+	PenIcon,
 	VideoCameraIcon,
 	VideoCameraSlashIcon,
 	XIcon,
@@ -53,6 +54,13 @@ function LaunchWindowContent() {
 	const t = useScopedT("launch");
 	const { openId, requestOpen } = useLaunchPopoverCoordinator();
 	const [teleprompterOpen, setTeleprompterOpen] = useState(false);
+	const [drawingOpen, setDrawingOpen] = useState(false);
+
+	useEffect(() => {
+		const api = window.electronAPI;
+		void api?.isDrawingOpen?.().then((open) => setDrawingOpen(Boolean(open)));
+		return api?.onDrawingVisibility?.((open) => setDrawingOpen(open));
+	}, []);
 
 	useEffect(() => {
 		const api = window.electronAPI;
@@ -363,6 +371,22 @@ function LaunchWindowContent() {
 					</Button>
 				}
 			/>
+
+			<Button
+				variant="ghost"
+				size="icon"
+				iconSize="lg"
+				title={drawingOpen ? "Close screen drawing" : "Draw on screen"}
+				aria-pressed={drawingOpen}
+				className={drawingOpen ? "text-accent" : ""}
+				onClick={() => {
+					void window.electronAPI
+						?.toggleDrawing?.()
+						.then((open) => setDrawingOpen(Boolean(open)));
+				}}
+			>
+				<PenIcon weight={drawingOpen ? "fill" : "regular"} className="size-5" />
+			</Button>
 
 			<Button
 				variant="ghost"

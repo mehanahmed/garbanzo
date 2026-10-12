@@ -197,6 +197,13 @@ export function toggleTeleprompterWindow(): boolean {
 	return true;
 }
 
+/** Keep the teleprompter above the screen-drawing layer. */
+export function raiseTeleprompterWindow(): void {
+	if (teleprompterWindow && !teleprompterWindow.isDestroyed() && teleprompterWindow.isVisible()) {
+		teleprompterWindow.moveTop();
+	}
+}
+
 /** Called whenever a recording starts or stops so the script can auto-scroll. */
 export function notifyTeleprompterRecordingState(active: boolean): void {
 	recordingActive = active;

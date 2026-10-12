@@ -1,0 +1,236 @@
+/* ---- drawing layer ------------------------------------------------------ */
+
+.overlay {
+	position: fixed;
+	inset: 0;
+	background: transparent;
+	overflow: hidden;
+	touch-action: none;
+	user-select: none;
+}
+
+.canvas {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.passthrough {
+	pointer-events: none;
+}
+
+.tool_pen,
+.tool_line,
+.tool_arrow,
+.tool_rect,
+.tool_highlighter {
+	cursor: crosshair;
+}
+
+.tool_text {
+	cursor: text;
+}
+
+.textDraft {
+	position: absolute;
+	min-width: 40px;
+	margin: 0;
+	padding: 0 4px;
+	border: 0;
+	border-radius: 4px;
+	outline: 1.5px dashed rgb(255 255 255 / 0.75) !important;
+	outline-offset: 4px;
+	background: rgb(0 0 0 / 0.18);
+	font-weight: 700;
+	resize: none;
+	overflow: hidden;
+	white-space: pre;
+	caret-color: currentColor;
+	user-select: text;
+}
+
+/* ---- toolbar ------------------------------------------------------------ */
+
+.toolbar {
+	--draw-color: #ff3b30;
+	--panel: #1b1c20;
+	--panel-edge: #34353c;
+	--ink: #ececf1;
+	--ink-muted: #8b8c95;
+	--hover: rgb(255 255 255 / 0.08);
+	--active: rgb(255 255 255 / 0.14);
+
+	position: fixed;
+	top: 8px;
+	left: 4px;
+	width: 48px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	padding: 4px 0 6px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 14px;
+	background: var(--panel);
+	box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+	color: var(--ink);
+	font-family: "DM Sans", system-ui, sans-serif;
+	user-select: none;
+}
+
+.grip {
+	-webkit-app-region: drag;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 3px;
+	width: 100%;
+	height: 18px;
+	cursor: grab;
+	align-items: center;
+}
+
+.grip span {
+	width: 18px;
+	height: 2px;
+	border-radius: 1px;
+	background: var(--panel-edge);
+}
+
+.group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.divider {
+	width: 26px;
+	height: 1px;
+	margin: 4px 0;
+	background: var(--panel-edge);
+}
+
+.toolButton {
+	-webkit-app-region: no-drag;
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 38px;
+	height: 36px;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.toolButton:hover:not(:disabled) {
+	background: var(--hover);
+}
+
+.toolButton:disabled {
+	color: #4e4f57;
+	cursor: default;
+}
+
+/* The selected tool carries a bar in the current ink colour, so tool and
+   colour read together at a glance. */
+.toolButton[data-active] {
+	background: var(--active);
+}
+
+.toolButton[data-active]::before {
+	content: "";
+	position: absolute;
+	left: -5px;
+	top: 9px;
+	bottom: 9px;
+	width: 3px;
+	border-radius: 2px;
+	background: var(--draw-color);
+}
+
+.toolButton[data-active][data-cursor]::before {
+	background: var(--ink-muted);
+}
+
+.toolbar button:focus-visible {
+	outline: 2px solid #ffffff !important;
+	outline-offset: -2px;
+}
+
+.swatchButton {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: var(--draw-color);
+	box-shadow:
+		0 0 0 2px var(--panel),
+		0 0 0 3.5px rgb(255 255 255 / 0.35);
+}
+
+.stylePanel {
+	-webkit-app-region: no-drag;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	width: 40px;
+	padding: 6px 0;
+	margin-bottom: 2px;
+	border-radius: 10px;
+	background: rgb(255 255 255 / 0.04);
+}
+
+.swatches {
+	display: grid;
+	grid-template-columns: repeat(2, 16px);
+	gap: 6px;
+}
+
+.swatch {
+	width: 16px;
+	height: 16px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	cursor: pointer;
+	box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+.swatch[data-active] {
+	box-shadow:
+		0 0 0 2px var(--panel),
+		0 0 0 3.5px var(--ink);
+}
+
+.sizes {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.sizeButton {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	cursor: pointer;
+}
+
+.sizeButton:hover {
+	background: var(--hover);
+}
+
+.sizeButton[data-active] {
+	background: var(--active);
+}
+
+.sizeDot {
+	border-radius: 50%;
+	background: var(--ink);
+}

@@ -1,4 +1,5 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { isDrawingOverlayOpen } from "../../drawingWindows";
 import { getMainRecordingProfile } from "../../liteModeMain";
 import { getNoiseCancellationFilters } from "../../../src/lib/noiseCancellation";
 import { getActiveNoiseCancellationLevel } from "../recording/noiseCancellation";
@@ -738,9 +739,11 @@ export function registerRecordingHandlers(
 					capturesMicrophone,
 				};
 
+				// macOS hides Recordly from capture by excluding the whole app. While
+				// screen drawing is open the drawings must be recorded, so skip it.
 				const excludedProcessIds = getHudCaptureExcludedProcessIds(
 					process.platform,
-					getHudOverlayCaptureProtectionEnabled(),
+					getHudOverlayCaptureProtectionEnabled() && !isDrawingOverlayOpen(),
 					process.pid,
 				);
 				if (excludedProcessIds.length > 0) {
