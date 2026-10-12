@@ -6,6 +6,9 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
 #include <vector>
 
 class WasapiCapture {
@@ -39,6 +42,8 @@ public:
 private:
     bool initializeCommon();
     void captureThread();
+    void writerThread();
+    void enqueueWrite(std::vector<int16_t>&& samples);
     bool writeWavHeader(HANDLE file, DWORD dataSize);
     void writePcmFrames(const int16_t* samples, UINT32 frameCount, WORD channels);
     void writeSilenceFrames(uint64_t frameCount, WORD channels);
@@ -47,6 +52,14 @@ private:
 
     std::string outputPath_;
     std::thread thread_;
+    // Disk writes run on their own thread so a slow disk can never stall the
+    // capture loop (a stalled loop loses audio and sounds "broken").
+    std::thread writer_;
+    std::mutex writeMutex_;
+    std::condition_variable writeCv_;
+    std::deque<std::vector<int16_t>> writeQueue_;
+    bool writerStop_ = false;
+    std::atomic<uint64_t> bytesOnDisk_{0};
     std::atomic<bool> capturing_{false};
     std::atomic<bool> paused_{false};
     HANDLE outputFile_ = INVALID_HANDLE_VALUE;

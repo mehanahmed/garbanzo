@@ -1,5 +1,7 @@
 #include "wasapi_loopback.h"
 #include <functiondiscoverykeys_devpkey.h>
+#include <avrt.h>
+#include <timeapi.h>
 #include <iostream>
 #include <cstring>
 #include <algorithm>
@@ -7,6 +9,8 @@
 #include <cwctype>
 
 #pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "avrt.lib")
+#pragma comment(lib, "winmm.lib")
 
 namespace {
 constexpr int64_t kHundredNanosecondsPerSecond = 10000000;
@@ -17,6 +21,13 @@ constexpr uint32_t kMinimumGapFillThresholdMs = 50;
 constexpr uint32_t kDiscontinuityGapFillThresholdMs = 140;
 constexpr uint32_t kSilentDiscontinuityCompactThresholdMs = 40;
 constexpr uint32_t kBoundaryFadeInMs = 5;
+// The shared-mode buffer is how long the capture loop may be late before
+// audio is lost. 20 ms was easily exceeded on busy, low-spec PCs (video
+// encoding, a slow disk, the 15.6 ms default Windows timer), which dropped
+// audio and made voices sound broken. 200 ms adds no recording latency: the
+// loop still drains packets every few milliseconds.
+constexpr REFERENCE_TIME kSharedBufferDurationHns = 2000000; // 200 ms
+constexpr DWORD kPollIntervalMs = 5;
 
 int64_t queryPerformanceCounterHns() {
     LARGE_INTEGER counter;
@@ -79,6 +90,26 @@ bool deviceNamesMatch(
     const std::wstring candidate = normalizeDeviceName(candidateName);
     const std::wstring requested = normalizeDeviceName(requestedName);
     return !candidate.empty() && candidate == requested;
+}
+
+enum class DeviceRole { None, Default, Communications };
+
+// Chromium lists the Windows default devices as "Default - <name>" and
+// "Communications - <name>". Strip that prefix so the native helper opens the
+// same microphone the user picked.
+std::wstring stripRolePrefix(const std::wstring& label, DeviceRole* role) {
+    static const std::wstring kDefault = L"Default - ";
+    static const std::wstring kCommunications = L"Communications - ";
+    if (label.rfind(kDefault, 0) == 0) {
+        if (role) *role = DeviceRole::Default;
+        return label.substr(kDefault.size());
+    }
+    if (label.rfind(kCommunications, 0) == 0) {
+        if (role) *role = DeviceRole::Communications;
+        return label.substr(kCommunications.size());
+    }
+    if (role) *role = DeviceRole::None;
+    return label;
 }
 
 std::wstring getDeviceFriendlyName(IMMDevice* device) {
@@ -178,17 +209,37 @@ bool WasapiCapture::initializeMic(
         IID_IMMDeviceEnumerator_, reinterpret_cast<void**>(&enumerator_));
     if (FAILED(hr)) return false;
 
-    if (!deviceId.empty() && deviceId != "default") {
+    DeviceRole labelRole = DeviceRole::None;
+    const std::wstring plainName = stripRolePrefix(utf8ToWide(deviceName), &labelRole);
+
+    // Chromium's special device ids map to the Windows default endpoints.
+    if (deviceId == "communications") {
+        hr = enumerator_->GetDefaultAudioEndpoint(eCapture, eCommunications, &device_);
+        if (FAILED(hr)) device_ = nullptr;
+    } else if (deviceId == "default") {
+        hr = enumerator_->GetDefaultAudioEndpoint(eCapture, eConsole, &device_);
+        if (FAILED(hr)) device_ = nullptr;
+    }
+
+    if (!device_ && !deviceId.empty() && deviceId != "default" && deviceId != "communications") {
         const std::wstring requestedId = utf8ToWide(deviceId);
         hr = enumerator_->GetDevice(requestedId.c_str(), &device_);
         if (FAILED(hr)) device_ = nullptr;
     }
-    if (!device_ && !deviceName.empty() && deviceId != "default") {
-        device_ = findCaptureDeviceByName(utf8ToWide(deviceName));
+    if (!device_ && !plainName.empty()) {
+        device_ = findCaptureDeviceByName(plainName);
+    }
+    if (!device_ && labelRole != DeviceRole::None) {
+        hr = enumerator_->GetDefaultAudioEndpoint(
+            eCapture,
+            labelRole == DeviceRole::Communications ? eCommunications : eConsole,
+            &device_);
+        if (FAILED(hr)) device_ = nullptr;
     }
     if (!device_) {
         const bool wantedSpecificDevice =
-            deviceId != "default" && (!deviceId.empty() || !deviceName.empty());
+            deviceId != "default" && deviceId != "communications" &&
+            (!deviceId.empty() || !deviceName.empty());
         if (wantedSpecificDevice) {
             std::cerr << "WARNING: Requested microphone unavailable" << std::endl;
             return false;
@@ -196,6 +247,9 @@ bool WasapiCapture::initializeMic(
         hr = enumerator_->GetDefaultAudioEndpoint(eCapture, eConsole, &device_);
         if (FAILED(hr)) return false;
     }
+
+    const std::wstring openedName = getDeviceFriendlyName(device_);
+    std::wcerr << L"Microphone: " << openedName << std::endl;
 
     return initializeCommon();
 }
@@ -208,11 +262,10 @@ bool WasapiCapture::initializeCommon() {
     hr = audioClient_->GetMixFormat(&mixFormat_);
     if (FAILED(hr)) return false;
 
-    REFERENCE_TIME bufferDuration = 200000; // 20ms
     hr = audioClient_->Initialize(
         AUDCLNT_SHAREMODE_SHARED,
         streamFlags_,
-        bufferDuration, 0, mixFormat_, nullptr);
+        kSharedBufferDurationHns, 0, mixFormat_, nullptr);
     if (FAILED(hr)) return false;
 
     hr = audioClient_->GetBufferSize(&bufferFrameCount_);
@@ -251,6 +304,7 @@ bool WasapiCapture::start() {
     compactedSilentDiscontinuityCount_ = 0;
     compactedSilentDiscontinuityFrames_ = 0;
     fadeInFramesRemaining_ = 0;
+    bytesOnDisk_ = 0;
     writeWavHeader(outputFile_, 0);
 
     HRESULT hr = audioClient_->Start();
@@ -259,6 +313,13 @@ bool WasapiCapture::start() {
         outputFile_ = INVALID_HANDLE_VALUE;
         return false;
     }
+
+    {
+        std::lock_guard<std::mutex> lock(writeMutex_);
+        writeQueue_.clear();
+        writerStop_ = false;
+    }
+    writer_ = std::thread(&WasapiCapture::writerThread, this);
 
     capturing_ = true;
     paused_ = false;
@@ -294,9 +355,16 @@ void WasapiCapture::stop() {
     if (thread_.joinable()) thread_.join();
     if (audioClient_) audioClient_->Stop();
 
+    {
+        std::lock_guard<std::mutex> lock(writeMutex_);
+        writerStop_ = true;
+    }
+    writeCv_.notify_all();
+    if (writer_.joinable()) writer_.join();
+
     if (outputFile_ != INVALID_HANDLE_VALUE) {
         SetFilePointer(outputFile_, 0, nullptr, FILE_BEGIN);
-        const uint64_t dataBytes = totalDataBytes_.load();
+        const uint64_t dataBytes = bytesOnDisk_.load();
         const DWORD wavDataBytes =
             static_cast<DWORD>(std::min<uint64_t>(dataBytes, 0xFFFFFFFFu));
         writeWavHeader(outputFile_, wavDataBytes);
@@ -347,7 +415,7 @@ void WasapiCapture::writePcmFrames(const int16_t* samples, UINT32 frameCount, WO
         return;
     }
 
-    const DWORD bytesToWrite = frameCount * channels * sizeof(int16_t);
+    std::vector<int16_t> chunk(samples, samples + static_cast<size_t>(frameCount) * channels);
     const uint32_t fadeFrames = fadeInFramesRemaining_.load();
     if (fadeFrames > 0) {
         const uint32_t totalFadeFrames = boundaryFadeInFrameCount();
@@ -355,31 +423,54 @@ void WasapiCapture::writePcmFrames(const int16_t* samples, UINT32 frameCount, WO
         const uint32_t framesToFade =
             (std::min)(static_cast<uint32_t>(frameCount), remainingFadeFrames);
         const uint32_t completedFadeFrames = totalFadeFrames - remainingFadeFrames;
-        std::vector<int16_t> faded(samples, samples + frameCount * channels);
         for (uint32_t frame = 0; frame < framesToFade; frame++) {
             const double scale =
                 static_cast<double>(completedFadeFrames + frame + 1) /
                 static_cast<double>(totalFadeFrames);
             for (WORD channel = 0; channel < channels; channel++) {
                 const size_t index = static_cast<size_t>(frame) * channels + channel;
-                const long scaled = std::lround(static_cast<double>(faded[index]) * scale);
-                faded[index] = static_cast<int16_t>(
-                    std::clamp<long>(scaled, -32768, 32767));
+                const long scaled = std::lround(static_cast<double>(chunk[index]) * scale);
+                chunk[index] = static_cast<int16_t>(std::clamp<long>(scaled, -32768, 32767));
             }
         }
         fadeInFramesRemaining_ = remainingFadeFrames - framesToFade;
-
-        DWORD written = 0;
-        WriteFile(outputFile_, faded.data(), bytesToWrite, &written, nullptr);
-        totalDataBytes_.fetch_add(written);
-        framesWritten_.fetch_add(written / (channels * sizeof(int16_t)));
-        return;
     }
 
-    DWORD written = 0;
-    WriteFile(outputFile_, samples, bytesToWrite, &written, nullptr);
-    totalDataBytes_.fetch_add(written);
-    framesWritten_.fetch_add(written / (channels * sizeof(int16_t)));
+    // Count frames as soon as they are queued: the gap detection in the
+    // capture loop compares against this and must not wait for the disk.
+    totalDataBytes_.fetch_add(static_cast<uint64_t>(chunk.size()) * sizeof(int16_t));
+    framesWritten_.fetch_add(frameCount);
+    enqueueWrite(std::move(chunk));
+}
+
+void WasapiCapture::enqueueWrite(std::vector<int16_t>&& samples) {
+    {
+        std::lock_guard<std::mutex> lock(writeMutex_);
+        writeQueue_.push_back(std::move(samples));
+    }
+    writeCv_.notify_one();
+}
+
+void WasapiCapture::writerThread() {
+    std::deque<std::vector<int16_t>> pending;
+    for (;;) {
+        {
+            std::unique_lock<std::mutex> lock(writeMutex_);
+            writeCv_.wait(lock, [this] { return writerStop_ || !writeQueue_.empty(); });
+            pending.swap(writeQueue_);
+            if (pending.empty() && writerStop_) {
+                return;
+            }
+        }
+        for (const auto& chunk : pending) {
+            const DWORD bytes = static_cast<DWORD>(chunk.size() * sizeof(int16_t));
+            DWORD written = 0;
+            if (bytes > 0 && WriteFile(outputFile_, chunk.data(), bytes, &written, nullptr)) {
+                bytesOnDisk_.fetch_add(written);
+            }
+        }
+        pending.clear();
+    }
 }
 
 void WasapiCapture::writeSilenceFrames(uint64_t frameCount, WORD channels) {
@@ -430,6 +521,15 @@ void WasapiCapture::captureThread() {
     // than Windows 10, causing silent audio capture failures without this.
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
+    // Run as a real-time audio thread so video encoding or other apps cannot
+    // starve it, and use a 1 ms timer so the short polling sleep is accurate.
+    DWORD mmcssTaskIndex = 0;
+    HANDLE mmcssHandle = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcssTaskIndex);
+    if (!mmcssHandle) {
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+    }
+    timeBeginPeriod(1);
+
     WORD channels = static_cast<WORD>(mixFormat_->nChannels);
     const bool isFloat = isFloatFormat(mixFormat_);
     const bool isPcm = isPcmFormat(mixFormat_);
@@ -440,8 +540,7 @@ void WasapiCapture::captureThread() {
 
     std::vector<int16_t> pcmBuffer;
 
-    DWORD sleepMs = static_cast<DWORD>((static_cast<double>(bufferFrameCount_) / mixFormat_->nSamplesPerSec) * 500.0);
-    if (sleepMs < 5) sleepMs = 5;
+    const DWORD sleepMs = kPollIntervalMs;
 
     while (capturing_) {
         if (paused_) {
@@ -619,5 +718,9 @@ void WasapiCapture::captureThread() {
         }
     }
 
+    timeEndPeriod(1);
+    if (mmcssHandle) {
+        AvRevertMmThreadCharacteristics(mmcssHandle);
+    }
     CoUninitialize();
 }

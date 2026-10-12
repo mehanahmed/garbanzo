@@ -46,6 +46,8 @@ export function MicPopover({
 	const t = useScopedT("launch");
 	const { isOpen, requestOpen, requestClose } = useLaunchPopoverCoordinator();
 	const open = isOpen(POPOVER_ID);
+	// The one microphone that will be recorded.
+	const activeDeviceId = selectedDeviceId ?? microphoneDeviceId ?? "default";
 	const [ancLevel, setAncLevel] = useState<NoiseCancellationLevel>(loadNoiseCancellationLevel);
 
 	return (
@@ -96,11 +98,8 @@ export function MicPopover({
 				<MicDeviceRow
 					key={device.deviceId}
 					device={device}
-					selected={
-						microphoneEnabled &&
-						(microphoneDeviceId === device.deviceId ||
-							selectedDeviceId === device.deviceId)
-					}
+					selected={microphoneEnabled && activeDeviceId === device.deviceId}
+					showLevel={open && microphoneEnabled && activeDeviceId === device.deviceId}
 					onSelect={() => onSelectDevice(device.deviceId)}
 				/>
 			))}

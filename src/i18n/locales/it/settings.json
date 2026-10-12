@@ -65,6 +65,10 @@
 		"animationPresets": "Preset di animazione",
 		"cursorMotionPresets": "Preset di movimento del cursore",
 		"motionPresets": {
+			"accurate": {
+				"label": "Accurate",
+				"description": "The cursor follows your real mouse path and speed exactly, with no smoothing."
+			},
 			"focused": {
 				"label": "Focalizzato",
 				"description": "Movimento più rapido per demo, walkthrough e registrazioni quotidiane."

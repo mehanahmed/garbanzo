@@ -65,6 +65,10 @@
 		"animationPresets": "动画预设",
 		"cursorMotionPresets": "光标运动预设",
 		"motionPresets": {
+			"accurate": {
+				"label": "Accurate",
+				"description": "The cursor follows your real mouse path and speed exactly, with no smoothing."
+			},
 			"focused": {
 				"label": "专注",
 				"description": "更利落，适合演示、讲解和日常录屏。"

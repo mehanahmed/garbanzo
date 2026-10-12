@@ -79,7 +79,7 @@ export function legacyBorderRadiusPixelsToPercent(value: number): number {
 	return (value / LEGACY_BORDER_RADIUS_REFERENCE_PX) * 100;
 }
 
-const DEFAULT_MOTION_PRESET = CURSOR_MOTION_PRESETS.focused;
+const DEFAULT_MOTION_PRESET = CURSOR_MOTION_PRESETS.accurate;
 
 export interface ProjectEditorState {
 	wallpaper: string;

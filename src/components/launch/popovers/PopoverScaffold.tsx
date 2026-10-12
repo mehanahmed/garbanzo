@@ -55,14 +55,19 @@ export function DropdownItem({
 export function MicDeviceRow({
 	device,
 	selected,
+	showLevel,
 	onSelect,
 }: {
 	device: DeviceOption;
 	selected: boolean;
+	/** Only the mic that will record shows a live level, so it is obvious which one hears you. */
+	showLevel: boolean;
 	onSelect: () => void;
 }) {
+	// Opening every microphone at once just to draw meters also disturbs
+	// virtual and phone mics; only the active one is opened.
 	const { level } = useAudioLevelMeter({
-		enabled: true,
+		enabled: showLevel,
 		deviceId: device.deviceId,
 	});
 
@@ -81,7 +86,7 @@ export function MicDeviceRow({
 				)}
 			</span>
 			<span className="truncate flex-1">{device.label}</span>
-			<AudioLevelMeter level={level} className="w-16 shrink-0" />
+			{showLevel && <AudioLevelMeter level={level} className="w-16 shrink-0" />}
 		</ToggleButton>
 	);
 }

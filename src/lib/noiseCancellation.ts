@@ -38,12 +38,14 @@ export function getNoiseCancellationFilters(level: NoiseCancellationLevel): stri
 		case "light":
 			return ["highpass=f=80", "afftdn=nr=20:nf=-40:tn=1", "lowpass=f=14000"];
 		case "strong":
+			// One stronger spectral pass plus a soft gate. The previous double
+			// pass and hard gate removed more hiss but clipped quiet syllables,
+			// which sounded choppy.
 			return [
-				"highpass=f=100",
-				"afftdn=nr=24:nf=-36:tn=1",
-				"afftdn=nr=8:nf=-40",
-				"lowpass=f=11000",
-				"agate=threshold=0.012:ratio=2.5:attack=8:release=250:range=0.12",
+				"highpass=f=90",
+				"afftdn=nr=30:nf=-34:tn=1",
+				"lowpass=f=12000",
+				"agate=threshold=0.008:ratio=2:attack=5:release=400:range=0.2",
 			];
 		default:
 			return [];

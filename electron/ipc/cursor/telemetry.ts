@@ -267,11 +267,8 @@ export async function persistPendingCursorTelemetry(videoPath: string) {
 	if (pendingCursorSamples.length > 0) {
 		await fs.writeFile(
 			telemetryPath,
-			JSON.stringify(
-				{ version: CURSOR_TELEMETRY_VERSION, samples: pendingCursorSamples },
-				null,
-				2,
-			),
+			// Compact JSON: 60 Hz telemetry would otherwise double the file size.
+			JSON.stringify({ version: CURSOR_TELEMETRY_VERSION, samples: pendingCursorSamples }),
 			"utf-8",
 		);
 	}

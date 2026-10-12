@@ -264,8 +264,9 @@ describe("Motion preset normalization", () => {
 		expect(result.cursorSpringDampingMultiplier).toBe(smooth.cursorSpringDampingMultiplier);
 	});
 
-	it("falls back to focused when the saved values do not match a supported preset", () => {
-		const focused = CURSOR_MOTION_PRESETS.focused;
+	it("falls back to accurate when the saved values do not match a supported preset", () => {
+		// "Accurate" (no cursor smoothing) is the default motion preset.
+		const focused = CURSOR_MOTION_PRESETS.accurate;
 		const result = normalizeProjectEditor({
 			zoomInDurationMs: 275,
 			zoomOutDurationMs: 410,

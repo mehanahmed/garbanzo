@@ -1,6 +1,6 @@
 import { DEFAULT_ZOOM_IN_DURATION_MS, DEFAULT_ZOOM_OUT_DURATION_MS } from "./types";
 
-export type CursorMotionPresetId = "focused" | "smooth";
+export type CursorMotionPresetId = "accurate" | "focused" | "smooth";
 
 export interface CursorMotionPreset {
 	id: CursorMotionPresetId;
@@ -38,6 +38,18 @@ const SHARED_CURSOR_PRESET_VALUES = {
 } as const;
 
 export const CURSOR_MOTION_PRESETS: Record<CursorMotionPresetId, CursorMotionPreset> = {
+	// No cursor smoothing: the cursor follows the recorded path and speed exactly.
+	accurate: {
+		id: "accurate",
+		label: "Accurate",
+		zoomSmoothness: 0.5,
+		zoomInDurationMs: 200,
+		zoomOutDurationMs: 200,
+		...SHARED_CURSOR_PRESET_VALUES,
+		cursorSmoothing: 0,
+		cursorSpringStiffnessMultiplier: 1.35,
+		cursorSpringDampingMultiplier: 0.79,
+	},
 	focused: {
 		id: "focused",
 		label: "Focused",
@@ -85,7 +97,7 @@ export function getMatchingCursorMotionPresetId(
 
 export function resolveCursorMotionPresetId(
 	values: CursorMotionPresetSelectionInput,
-	fallback: CursorMotionPresetId = "focused",
+	fallback: CursorMotionPresetId = "accurate",
 ): CursorMotionPresetId {
 	return getMatchingCursorMotionPresetId(values) ?? fallback;
 }

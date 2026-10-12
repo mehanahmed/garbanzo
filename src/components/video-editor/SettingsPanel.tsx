@@ -188,7 +188,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 	return <Label className="text-[13px]">{children}</Label>;
 }
 
-const MOTION_PRESET_ORDER: CursorMotionPresetId[] = ["focused", "smooth"];
+const MOTION_PRESET_ORDER: CursorMotionPresetId[] = ["accurate", "focused", "smooth"];
 
 const CURSOR_CLICK_EFFECT_OPTIONS: Array<{
 	id: CursorClickEffectStyle;
@@ -1462,7 +1462,7 @@ export function SettingsPanel({
 				cursorSpringMassMultiplier,
 				cursorClickBounce,
 				cursorClickBounceDuration,
-			}) ?? "focused"
+			}) ?? "accurate"
 		);
 	}, [
 		cursorClickBounce,

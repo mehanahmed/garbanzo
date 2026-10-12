@@ -65,6 +65,10 @@
 		"animationPresets": "Пресеты анимации",
 		"cursorMotionPresets": "Предустановки движения курсора",
 		"motionPresets": {
+			"accurate": {
+				"label": "Accurate",
+				"description": "The cursor follows your real mouse path and speed exactly, with no smoothing."
+			},
 			"focused": {
 				"label": "Фокус",
 				"description": "Быстрая анимация для демо-роликов, пошаговых инструкций и повседневных записей."
