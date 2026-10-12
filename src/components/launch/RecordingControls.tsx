@@ -1,9 +1,11 @@
 import {
+	DocumentTextIcon,
 	House,
 	MicrophoneIcon,
 	MicrophoneSlashIcon,
 	MinusIcon,
 	PauseIcon,
+	PenIcon,
 	PlayIcon,
 	XIcon,
 } from "@/components/ui/icons";
@@ -21,6 +23,10 @@ interface RecordingControlsProps {
 	onHideHud: () => void;
 	onCancelRecording: () => void;
 	formatTime: (seconds: number) => string;
+	drawingOpen: boolean;
+	onToggleDrawing: () => void;
+	teleprompterOpen: boolean;
+	onToggleTeleprompter: () => void;
 }
 export function RecordingControls({
 	onHome,
@@ -32,6 +38,10 @@ export function RecordingControls({
 	onHideHud,
 	onCancelRecording,
 	formatTime,
+	drawingOpen,
+	onToggleDrawing,
+	teleprompterOpen,
+	onToggleTeleprompter,
 }: RecordingControlsProps) {
 	const t = useScopedT("launch");
 	const actionClass = `size-9 min-w-9 rounded-full ${styles.electronNoDrag}`;
@@ -76,6 +86,39 @@ export function RecordingControls({
 					)}
 				</Button>
 				<Tooltip.Content>{t("recording.micToggleDisabledTip")}</Tooltip.Content>
+			</Tooltip>
+			<Tooltip>
+				<Button
+					isIconOnly
+					variant="ghost"
+					className={`${actionClass} ${drawingOpen ? "text-accent" : ""}`}
+					onPress={onToggleDrawing}
+					aria-pressed={drawingOpen}
+					aria-label={drawingOpen ? "Close screen drawing" : "Draw on screen"}
+				>
+					<PenIcon weight={drawingOpen ? "fill" : "regular"} className="size-4" />
+				</Button>
+				<Tooltip.Content>
+					{drawingOpen ? "Close screen drawing" : "Draw on screen (Ctrl+Shift+D)"}
+				</Tooltip.Content>
+			</Tooltip>
+			<Tooltip>
+				<Button
+					isIconOnly
+					variant="ghost"
+					className={`${actionClass} ${teleprompterOpen ? "text-accent" : ""}`}
+					onPress={onToggleTeleprompter}
+					aria-pressed={teleprompterOpen}
+					aria-label={teleprompterOpen ? "Close teleprompter" : "Open teleprompter"}
+				>
+					<DocumentTextIcon
+						weight={teleprompterOpen ? "fill" : "regular"}
+						className="size-4"
+					/>
+				</Button>
+				<Tooltip.Content>
+					{teleprompterOpen ? "Close teleprompter" : "Open teleprompter"}
+				</Tooltip.Content>
 			</Tooltip>
 			<Separator orientation="vertical" className="mx-1 h-5 self-center" />
 			<Tooltip>

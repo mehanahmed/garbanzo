@@ -56,6 +56,15 @@ function LaunchWindowContent() {
 	const [teleprompterOpen, setTeleprompterOpen] = useState(false);
 	const [drawingOpen, setDrawingOpen] = useState(false);
 
+	const toggleDrawing = () => {
+		void window.electronAPI?.toggleDrawing?.().then((open) => setDrawingOpen(Boolean(open)));
+	};
+	const toggleTeleprompter = () => {
+		void window.electronAPI
+			?.toggleTeleprompter?.()
+			.then((open) => setTeleprompterOpen(Boolean(open)));
+	};
+
 	useEffect(() => {
 		const api = window.electronAPI;
 		void api?.isDrawingOpen?.().then((open) => setDrawingOpen(Boolean(open)));
@@ -230,6 +239,10 @@ function LaunchWindowContent() {
 			onHideHud={() => window.electronAPI?.hudOverlayHide?.()}
 			onCancelRecording={cancelRecording}
 			formatTime={formatTime}
+			drawingOpen={drawingOpen}
+			onToggleDrawing={toggleDrawing}
+			teleprompterOpen={teleprompterOpen}
+			onToggleTeleprompter={toggleTeleprompter}
 		/>
 	);
 
@@ -379,11 +392,7 @@ function LaunchWindowContent() {
 				title={drawingOpen ? "Close screen drawing" : "Draw on screen"}
 				aria-pressed={drawingOpen}
 				className={drawingOpen ? "text-accent" : ""}
-				onClick={() => {
-					void window.electronAPI
-						?.toggleDrawing?.()
-						.then((open) => setDrawingOpen(Boolean(open)));
-				}}
+				onClick={toggleDrawing}
 			>
 				<PenIcon weight={drawingOpen ? "fill" : "regular"} className="size-5" />
 			</Button>
@@ -395,11 +404,7 @@ function LaunchWindowContent() {
 				title={teleprompterOpen ? "Close teleprompter" : "Open teleprompter"}
 				aria-pressed={teleprompterOpen}
 				className={teleprompterOpen ? "text-accent" : ""}
-				onClick={() => {
-					void window.electronAPI
-						?.toggleTeleprompter?.()
-						.then((open) => setTeleprompterOpen(Boolean(open)));
-				}}
+				onClick={toggleTeleprompter}
 			>
 				<DocumentTextIcon
 					weight={teleprompterOpen ? "fill" : "regular"}
