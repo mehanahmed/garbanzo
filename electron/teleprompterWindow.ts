@@ -200,7 +200,8 @@ export function toggleTeleprompterWindow(): boolean {
 /** Keep the teleprompter above the screen-drawing layer. */
 export function raiseTeleprompterWindow(): void {
 	if (teleprompterWindow && !teleprompterWindow.isDestroyed() && teleprompterWindow.isVisible()) {
-		teleprompterWindow.moveTop();
+		// Re-stack without moving: one level step above the drawing layer.
+		teleprompterWindow.setAlwaysOnTop(true, "floating", 1);
 	}
 }
 

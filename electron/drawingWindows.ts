@@ -52,6 +52,7 @@ let currentTool: DrawingTool = settings.tool;
 let lastDrawTool: DrawingTool = settings.tool;
 let shapeCount = 0;
 let drawModeShortcutsActive = false;
+let overlayFocusable = false;
 let getHudWindow: () => BrowserWindow | null = () => null;
 
 function getScreen() {
@@ -99,12 +100,36 @@ function broadcastState() {
 	}
 }
 
-/** Keep the tools, the HUD and the teleprompter above the drawing layer. */
-function raiseChrome() {
-	const hud = getHudWindow();
-	if (isAlive(hud)) hud.moveTop();
+/**
+ * Keep the tools, the HUD and the teleprompter above the drawing layer.
+ *
+ * Re-asserting "always on top" re-stacks a window without moving it.
+ * (BrowserWindow.moveTop() re-applies the window's bounds on Windows, which
+ * on scaled displays could shift or shrink the HUD and the toolbar so they
+ * looked hidden after picking a tool.)
+ */
+const TOOLBAR_LEVEL = "pop-up-menu";
+const HUD_LEVEL = "screen-saver";
+
+function restack() {
 	raiseTeleprompterWindow();
-	if (isAlive(toolbarWindow)) toolbarWindow.moveTop();
+	const hud = getHudWindow();
+	if (isAlive(hud) && hud.isVisible()) hud.setAlwaysOnTop(true, HUD_LEVEL);
+	if (isAlive(toolbarWindow) && toolbarWindow.isVisible()) {
+		toolbarWindow.setAlwaysOnTop(true, TOOLBAR_LEVEL);
+	}
+}
+
+let restackTimer: NodeJS.Timeout | null = null;
+
+function raiseChrome() {
+	restack();
+	// Windows can finish showing the drawing layer a moment later; stack again.
+	if (restackTimer) clearTimeout(restackTimer);
+	restackTimer = setTimeout(() => {
+		restackTimer = null;
+		restack();
+	}, 120);
 }
 
 // ---- display + placement ---------------------------------------------------
@@ -174,7 +199,12 @@ function applyMode() {
 	registerDrawModeShortcuts(drawing && !typing);
 
 	overlay.setIgnoreMouseEvents(!drawing);
-	overlay.setFocusable(typing);
+	// Only touch focusability when it changes: on Windows every call also
+	// deactivates the window, which hands focus to whatever sits below it.
+	if (overlayFocusable !== typing) {
+		overlayFocusable = typing;
+		overlay.setFocusable(typing);
+	}
 
 	if (!drawing && shapeCount === 0) {
 		// Nothing to show: hide the full-screen layer so it costs nothing.
@@ -303,7 +333,7 @@ function createToolbarWindow(targetWorkArea: Rectangle): BrowserWindow {
 		},
 	});
 
-	win.setAlwaysOnTop(true, "status");
+	win.setAlwaysOnTop(true, TOOLBAR_LEVEL);
 	win.setVisibleOnAllWorkspaces(true, {
 		visibleOnFullScreen: true,
 		skipTransformProcessType: process.platform === "darwin",
@@ -355,7 +385,10 @@ export function openDrawingSession(): void {
 	shapeCount = 0;
 
 	const display = getTargetDisplay();
-	overlayWindow = createOverlayWindow(display.bounds);
+	// The work area leaves the taskbar uncovered, so Windows never treats the
+	// drawing layer as a full-screen app and hides the taskbar.
+	overlayFocusable = false;
+	overlayWindow = createOverlayWindow(display.workArea);
 	toolbarWindow = createToolbarWindow(display.workArea);
 
 	globalShortcut.register(SHORTCUT_TOGGLE, toggleDrawMode);
@@ -365,6 +398,10 @@ export function openDrawingSession(): void {
 export function closeDrawingSession(): void {
 	registerDrawModeShortcuts(false);
 	globalShortcut.unregister(SHORTCUT_TOGGLE);
+	if (restackTimer) {
+		clearTimeout(restackTimer);
+		restackTimer = null;
+	}
 
 	const overlay = overlayWindow;
 	const toolbar = toolbarWindow;
