@@ -1696,7 +1696,7 @@ export function registerRecordingHandlers(
 							...getBrowserMicSidecarFilters(options?.browserMicrophoneProfile),
 							// ANC mode: extra noise cleanup on top of the sidecar chain.
 							...getNoiseCancellationFilters(getActiveNoiseCancellationLevel()),
-							"aresample=async=1:first_pts=0",
+							"aresample=async=1000:first_pts=0",
 						].join(","),
 						"-c:a",
 						"pcm_s16le",

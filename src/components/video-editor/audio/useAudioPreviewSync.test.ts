@@ -156,4 +156,65 @@ describe("source preview playback ownership", () => {
 		expect(audio.play).toHaveBeenCalledTimes(plays ? 1 : 0);
 		if (plays) expect(audio.currentTime).toBeCloseTo(time - delay / 1000);
 	});
+
+	it("respects recorded start delay and smoothly syncs playback rate for mic companion tracks", async () => {
+		const audio = {
+			src: "",
+			dataset: {},
+			duration: 10,
+			currentTime: 1.0,
+			playbackRate: 1,
+			paused: true,
+			volume: 1,
+			load: vi.fn(),
+			pause: vi.fn(),
+			play: vi.fn().mockImplementation(() => {
+				audio.paused = false;
+				return Promise.resolve();
+			}),
+		};
+		vi.stubGlobal("Audio", function () {
+			return audio;
+		});
+		vi.stubGlobal(
+			"AudioContext",
+			class {
+				state = "running";
+				destination = {};
+				createGain() {
+					return { gain: { value: 1 }, connect: vi.fn() };
+				}
+			},
+		);
+
+		useAudioPreviewSync({
+			audioRegions: [],
+			previewVolume: 1,
+			isPlaying: true,
+			currentTime: 2.0,
+			timelineTime: 2.0,
+			duration: 10,
+			sourcePlaybackRate: 1,
+			previewSourceAudioFallbackPaths: ["/recording.mic.wav"],
+			sourceAudioFallbackStartDelayMsByPath: { "/recording.mic.wav": 500 },
+			sourceAudioResourceVersion: 0,
+			isCurrentClipMuted: false,
+			getSourceTrackPreviewGain: () => 1,
+			onSourceFallbackLoadError: vi.fn(),
+		});
+
+		for (const effect of harness.effects) effect();
+		await Promise.resolve();
+		harness.effects.at(-1)?.();
+		await Promise.resolve();
+
+		expect(audio.play).toHaveBeenCalledTimes(1);
+		// targetTime = 2.0 - 0.5 = 1.5s. audio.currentTime is 1.0, so drift = 0.5s > 0.25s seek window
+		expect(audio.currentTime).toBeCloseTo(1.5);
+
+		// If audio is already playing (paused = false), subsequent sync ticks should not call play() again
+		harness.effects.at(-1)?.();
+		await Promise.resolve();
+		expect(audio.play).toHaveBeenCalledTimes(1);
+	});
 });

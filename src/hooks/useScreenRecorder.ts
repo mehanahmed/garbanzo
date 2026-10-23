@@ -2064,7 +2064,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				const micAudioTrack = microphoneStream.current?.getAudioTracks()[0];
 
 				if (systemAudioTrack && micAudioTrack) {
-					const context = new AudioContext({ sampleRate: 48000 });
+					const context = new AudioContext();
 					mixingContext.current = context;
 					if (context.state === "suspended") {
 						void context.resume();
@@ -2078,10 +2078,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					const micGain = context.createGain();
 					micGain.gain.value = MIC_GAIN_BOOST;
 					const destination = context.createMediaStreamDestination();
-					mixingNodes.current = [systemSource, micSource, micGain, destination];
+					// Keep AudioContext clock locked to output device to prevent clock drift in Chromium
+					const silentKeepAlive = context.createGain();
+					silentKeepAlive.gain.value = 0;
+					micSource.connect(silentKeepAlive).connect(context.destination);
 
 					systemSource.connect(destination);
 					micSource.connect(micGain).connect(destination);
+					mixingNodes.current = [systemSource, micSource, micGain, destination, silentKeepAlive];
 
 					const mixedTrack = destination.stream.getAudioTracks()[0];
 					if (mixedTrack) {
@@ -2092,26 +2096,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					stream.current.addTrack(systemAudioTrack);
 					systemAudioIncluded = true;
 				} else if (micAudioTrack) {
-					const context = new AudioContext({ sampleRate: 48000 });
-					mixingContext.current = context;
-					if (context.state === "suspended") {
-						void context.resume();
-					}
-					const micSource = context.createMediaStreamSource(
-						new MediaStream([micAudioTrack]),
-					);
-					const micGain = context.createGain();
-					micGain.gain.value = MIC_GAIN_BOOST;
-					const destination = context.createMediaStreamDestination();
-					mixingNodes.current = [micSource, micGain, destination];
-					micSource.connect(micGain).connect(destination);
-
-					const boostedTrack = destination.stream.getAudioTracks()[0];
-					if (boostedTrack) {
-						stream.current.addTrack(boostedTrack);
-					} else {
-						stream.current.addTrack(micAudioTrack);
-					}
+					// Route raw microphone track directly to MediaRecorder to prevent Web Audio clock skew/drift
+					stream.current.addTrack(micAudioTrack);
 				}
 			} else {
 				const mediaStream = useLinuxPortal
