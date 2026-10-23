@@ -45,16 +45,24 @@ import {
 } from "./micNormalization";
 
 describe("microphone normalization", () => {
-	it("builds ffmpeg arguments targeting -16 LUFS speech loudness with 48kHz audio", () => {
+	it("builds ffmpeg arguments targeting clear speech loudness with 48kHz audio and zero clipping", () => {
 		const args = buildMicNormalizationArgs("/tmp/in.mic.wav", "/tmp/out.mic.wav");
 		expect(args).toContain("-af");
 		const filterIndex = args.indexOf("-af");
 		const filterString = args[filterIndex + 1];
-		expect(filterString).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
+		expect(filterString).toContain("speechnorm=p=0.95");
 		expect(filterString).toContain("highpass=f=80");
+		expect(filterString).toContain("alimiter=limit=0.95:level=0");
+		expect(filterString).toContain("volume=6.0dB");
 		expect(args).toContain("-ar");
 		expect(args[args.indexOf("-ar") + 1]).toBe("48000");
 		expect(args.at(-1)).toBe("/tmp/out.mic.wav");
+	});
+
+	it("adjusts volume gain dynamically when gainDb is provided", () => {
+		const args = buildMicNormalizationArgs("/tmp/in.mic.wav", "/tmp/out.mic.wav", 11);
+		const filterString = args[args.indexOf("-af") + 1];
+		expect(filterString).toContain("volume=11.0dB");
 	});
 
 	it("preserves container codec formats for m4a and wav", () => {

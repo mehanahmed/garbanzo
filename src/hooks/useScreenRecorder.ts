@@ -31,7 +31,7 @@ const CHROME_MEDIA_SOURCE = "desktop";
 const RECORDING_FILE_PREFIX = "recording-";
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
-const MIC_GAIN_BOOST = 2.2;
+const MIC_GAIN_BOOST = 3.5;
 const WEBCAM_SUFFIX = "-webcam";
 const MICROPHONE_FALLBACK_ERROR_TOAST_ID = "recording-microphone-fallback-error";
 const MICROPHONE_SIDECAR_ERROR_TOAST_ID = "recording-microphone-sidecar-error";
@@ -389,6 +389,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const microphoneStream = useRef<MediaStream | null>(null);
 	const webcamStream = useRef<MediaStream | null>(null);
 	const mixingContext = useRef<AudioContext | null>(null);
+	const mixingNodes = useRef<AudioNode[]>([]);
 	const chunks = useRef<Blob[]>([]);
 	const webcamChunks = useRef<Blob[]>([]);
 	const startTime = useRef<number>(0);
@@ -631,6 +632,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			mixingContext.current.close().catch(() => undefined);
 			mixingContext.current = null;
 		}
+		mixingNodes.current = [];
 
 		if (micFallbackRecorder.current) {
 			try {
@@ -2064,6 +2066,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				if (systemAudioTrack && micAudioTrack) {
 					const context = new AudioContext({ sampleRate: 48000 });
 					mixingContext.current = context;
+					if (context.state === "suspended") {
+						void context.resume();
+					}
 					const systemSource = context.createMediaStreamSource(
 						new MediaStream([systemAudioTrack]),
 					);
@@ -2073,6 +2078,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					const micGain = context.createGain();
 					micGain.gain.value = MIC_GAIN_BOOST;
 					const destination = context.createMediaStreamDestination();
+					mixingNodes.current = [systemSource, micSource, micGain, destination];
 
 					systemSource.connect(destination);
 					micSource.connect(micGain).connect(destination);
@@ -2088,12 +2094,16 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				} else if (micAudioTrack) {
 					const context = new AudioContext({ sampleRate: 48000 });
 					mixingContext.current = context;
+					if (context.state === "suspended") {
+						void context.resume();
+					}
 					const micSource = context.createMediaStreamSource(
 						new MediaStream([micAudioTrack]),
 					);
 					const micGain = context.createGain();
 					micGain.gain.value = MIC_GAIN_BOOST;
 					const destination = context.createMediaStreamDestination();
+					mixingNodes.current = [micSource, micGain, destination];
 					micSource.connect(micGain).connect(destination);
 
 					const boostedTrack = destination.stream.getAudioTracks()[0];

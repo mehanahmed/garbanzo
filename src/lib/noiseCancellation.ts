@@ -36,16 +36,15 @@ export function normalizeNoiseCancellationLevel(value: unknown): NoiseCancellati
 export function getNoiseCancellationFilters(level: NoiseCancellationLevel): string[] {
 	switch (level) {
 		case "light":
-			return ["highpass=f=80", "afftdn=nr=20:nf=-40:tn=1", "lowpass=f=14000"];
+			return ["highpass=f=80", "afftdn=nr=15:nf=-45:tn=0", "lowpass=f=14000"];
 		case "strong":
-			// One stronger spectral pass plus a soft gate. The previous double
-			// pass and hard gate removed more hiss but clipped quiet syllables,
-			// which sounded choppy.
+			// Gentle spectral pass with an ultra-fast, low-threshold gate that
+			// will never clip soft syllables or cut off beginnings of words.
 			return [
 				"highpass=f=90",
-				"afftdn=nr=30:nf=-34:tn=1",
+				"afftdn=nr=20:nf=-42:tn=0",
 				"lowpass=f=12000",
-				"agate=threshold=0.008:ratio=2:attack=5:release=400:range=0.2",
+				"agate=threshold=0.003:ratio=1.5:attack=1:release=350:range=0.3",
 			];
 		default:
 			return [];
