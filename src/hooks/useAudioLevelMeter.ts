@@ -44,7 +44,9 @@ export function useAudioLevelMeter(options: AudioLevelMeterOptions) {
 				// change the Windows mic volume under an ongoing recording.
 				const constraints: MediaStreamConstraints = {
 					audio: {
-						...(options.deviceId ? { deviceId: { exact: options.deviceId } } : {}),
+						...(options.deviceId && options.deviceId !== "default"
+							? { deviceId: { exact: options.deviceId } }
+							: {}),
 						autoGainControl: false,
 						echoCancellation: false,
 						noiseSuppression: false,

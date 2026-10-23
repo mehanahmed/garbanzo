@@ -16,6 +16,7 @@ import {
 import { AudioSyncAdjustment } from "../types";
 import { moveFileWithOverwrite } from "../utils";
 import { emitRecordingInterrupted } from "./events";
+import { normalizeRecordedMicAudioFile } from "./micNormalization";
 import { applyNoiseCancellationToMicFile } from "./noiseCancellation";
 
 const WINDOWS_CAPTURE_STOP_TIMEOUT_MS = 45_000;
@@ -242,9 +243,10 @@ export async function muxNativeWindowsVideoWithAudio(
 					await moveFileWithOverwrite(micAudioPath, finalMicPath);
 				}
 				// ANC mode: clean background noise from the mic track (no-op when off).
-				const ancLevel = await applyNoiseCancellationToMicFile(finalMicPath);
-				const micSizeBytes =
-					ancLevel === "off" ? stat.size : (await fs.stat(finalMicPath)).size;
+				await applyNoiseCancellationToMicFile(finalMicPath);
+				// Normalize speech loudness so recorded voice is clear and audibly balanced in preview & export
+				await normalizeRecordedMicAudioFile(finalMicPath);
+				const micSizeBytes = (await fs.stat(finalMicPath)).size;
 				audioInputs.push("mic");
 				audio.mic = {
 					path: finalMicPath,

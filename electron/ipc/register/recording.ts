@@ -1,8 +1,4 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
-import { isDrawingOverlayOpen } from "../../drawingWindows";
-import { getMainRecordingProfile } from "../../liteModeMain";
-import { getNoiseCancellationFilters } from "../../../src/lib/noiseCancellation";
-import { getActiveNoiseCancellationLevel } from "../recording/noiseCancellation";
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -17,8 +13,11 @@ import {
 	systemPreferences,
 } from "electron";
 import { getHudCaptureExcludedProcessIds } from "../../../src/lib/hudCaptureProtection";
+import { getNoiseCancellationFilters } from "../../../src/lib/noiseCancellation";
 import { showCursor } from "../../cursorHider";
-import { getHudOverlayCaptureProtectionEnabled, beginHudCaptureProtection } from "../../windows";
+import { isDrawingOverlayOpen } from "../../drawingWindows";
+import { getMainRecordingProfile } from "../../liteModeMain";
+import { beginHudCaptureProtection, getHudOverlayCaptureProtectionEnabled } from "../../windows";
 import { ALLOW_RECORDLY_WINDOW_CAPTURE } from "../constants";
 import { startWindowBoundsCapture, stopWindowBoundsCapture } from "../cursor/bounds";
 import { startInteractionCapture, stopInteractionCapture } from "../cursor/interaction";
@@ -75,6 +74,8 @@ import {
 	waitForNativeCaptureStart,
 	waitForNativeCaptureStop,
 } from "../recording/mac";
+import { normalizeRecordedMicAudioFile } from "../recording/micNormalization";
+import { getActiveNoiseCancellationLevel } from "../recording/noiseCancellation";
 import { resolveRecordedVideoStoragePath } from "../recording/storagePath";
 import {
 	attachWindowsCaptureLifecycle,
@@ -1703,6 +1704,7 @@ export function registerRecordingHandlers(
 					],
 					{ timeout: 120000, maxBuffer: 10 * 1024 * 1024 },
 				);
+				await normalizeRecordedMicAudioFile(sidecarPath);
 				if (shouldKeepRecordingAudioSidecars()) {
 					await fs.rename(tempWebmPath, sourceWebmPath).catch(async () => {
 						await fs.copyFile(tempWebmPath, sourceWebmPath);

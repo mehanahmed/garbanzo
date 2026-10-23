@@ -31,7 +31,7 @@ const CHROME_MEDIA_SOURCE = "desktop";
 const RECORDING_FILE_PREFIX = "recording-";
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
-const MIC_GAIN_BOOST = 1.4;
+const MIC_GAIN_BOOST = 2.2;
 const WEBCAM_SUFFIX = "-webcam";
 const MICROPHONE_FALLBACK_ERROR_TOAST_ID = "recording-microphone-fallback-error";
 const MICROPHONE_SIDECAR_ERROR_TOAST_ID = "recording-microphone-sidecar-error";
@@ -226,7 +226,7 @@ export function createProcessedMicrophoneConstraints(
 		sampleRate: { ideal: 48000 },
 	};
 
-	if (microphoneDeviceId) {
+	if (microphoneDeviceId && microphoneDeviceId !== "default") {
 		audio.deviceId = { exact: microphoneDeviceId };
 	}
 
@@ -1186,9 +1186,22 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		if ((useNativeMacScreenCapture || useNativeWindowsCapture) && microphoneEnabled) {
 			try {
 				const devices = await navigator.mediaDevices.enumerateDevices();
-				const mic = devices.find(
-					(d) => d.deviceId === microphoneDeviceId && d.kind === "audioinput",
-				);
+				const mic =
+					devices.find(
+						(d) =>
+							d.kind === "audioinput" &&
+							microphoneDeviceId &&
+							microphoneDeviceId !== "default" &&
+							d.deviceId === microphoneDeviceId,
+					) ??
+					devices.find(
+						(d) =>
+							d.kind === "audioinput" &&
+							(d.deviceId === "default" ||
+								!microphoneDeviceId ||
+								microphoneDeviceId === "default"),
+					) ??
+					devices.find((d) => d.kind === "audioinput");
 				micLabel = mic?.label || undefined;
 			} catch {
 				// Fall through - native process will use the default mic.
@@ -2073,7 +2086,22 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					stream.current.addTrack(systemAudioTrack);
 					systemAudioIncluded = true;
 				} else if (micAudioTrack) {
-					stream.current.addTrack(micAudioTrack);
+					const context = new AudioContext({ sampleRate: 48000 });
+					mixingContext.current = context;
+					const micSource = context.createMediaStreamSource(
+						new MediaStream([micAudioTrack]),
+					);
+					const micGain = context.createGain();
+					micGain.gain.value = MIC_GAIN_BOOST;
+					const destination = context.createMediaStreamDestination();
+					micSource.connect(micGain).connect(destination);
+
+					const boostedTrack = destination.stream.getAudioTracks()[0];
+					if (boostedTrack) {
+						stream.current.addTrack(boostedTrack);
+					} else {
+						stream.current.addTrack(micAudioTrack);
+					}
 				}
 			} else {
 				const mediaStream = useLinuxPortal

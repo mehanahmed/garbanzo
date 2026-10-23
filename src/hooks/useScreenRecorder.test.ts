@@ -45,6 +45,17 @@ describe("createProcessedMicrophoneConstraints", () => {
 			},
 			video: false,
 		});
+
+		expect(createProcessedMicrophoneConstraints("default")).toEqual({
+			audio: {
+				echoCancellation: true,
+				noiseSuppression: true,
+				autoGainControl: true,
+				channelCount: { ideal: 1 },
+				sampleRate: { ideal: 48000 },
+			},
+			video: false,
+		});
 	});
 
 	it("keeps default voice processing when a specific microphone is selected", () => {
